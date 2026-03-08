@@ -270,7 +270,7 @@ export default function EventPage() {
           {event.description && <p className="text-muted-foreground mt-1">{event.description}</p>}
           {totalPhotos > 0 && (
             <p className="text-sm text-muted-foreground mt-1">
-              {t.event.photoCount ? t.event.photoCount.replace("{count}", String(totalPhotos)) : `${totalPhotos} фото`}
+              {totalPhotos} фото
             </p>
           )}
         </div>
