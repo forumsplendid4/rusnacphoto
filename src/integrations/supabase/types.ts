@@ -210,34 +210,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_add_photo:
-        | {
-            Args: {
-              p_admin_token: string
-              p_event_id: string
-              p_filename: string
-              p_storage_path: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_admin_token: string
-              p_event_id: string
-              p_filename: string
-              p_original_storage_path?: string
-              p_storage_path: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_event_id: string
-              p_filename: string
-              p_storage_path: string
-            }
-            Returns: undefined
-          }
+      admin_add_photo: {
+        Args: {
+          p_admin_token: string
+          p_event_id: string
+          p_filename: string
+          p_original_storage_path?: string
+          p_storage_path: string
+        }
+        Returns: undefined
+      }
       admin_create_event: {
         Args: {
           p_access_key?: string
