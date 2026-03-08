@@ -438,7 +438,15 @@ export default function AdminDashboard() {
               </div>
             )}
           </DialogContent>
-        </Dialog>
+        <EventPhotosManagerDialog
+          open={!!managePhotosEvent}
+          eventId={managePhotosEvent?.id || null}
+          eventTitle={managePhotosEvent?.title}
+          onOpenChange={(open) => {
+            if (!open) setManagePhotosEvent(null);
+          }}
+          onChanged={loadEvents}
+        />
       </main>
     </div>
   );
