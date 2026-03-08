@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   // Photo upload state
   const [uploadEventId, setUploadEventId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [managePhotosEvent, setManagePhotosEvent] = useState<Event | null>(null);
 
   // Orders view
   const [viewOrdersEventId, setViewOrdersEventId] = useState<string | null>(null);
