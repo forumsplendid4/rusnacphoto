@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { applyWatermark } from "@/lib/watermark";
 
 interface Event {
   id: string;
