@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAdminAuthenticated, setAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/integrations/supabase/client";
