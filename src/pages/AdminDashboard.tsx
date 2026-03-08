@@ -91,7 +91,7 @@ export default function AdminDashboard() {
     if (!newTitle.trim()) return;
     setCreating(true);
     try {
-      const { error } = await supabase.rpc("admin_create_event", {
+      const { error } = await (supabase.rpc as any)("admin_create_event", {
         p_title: newTitle.trim(),
         p_slug: generateSlug(newTitle.trim()),
         p_description: newDescription.trim() || null,
