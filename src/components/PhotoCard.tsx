@@ -19,18 +19,18 @@ interface PhotoCardProps {
   photoUrl: string;
   filename: string;
   photoId: string;
-  watermarkText: string;
   printSizes: PrintSize[];
   onAddToCart: (photoId: string, printSizeId: string, printSizeName: string, quantity: number) => void;
+  onPhotoClick: () => void;
 }
 
 export default function PhotoCard({
   photoUrl,
   filename,
   photoId,
-  watermarkText,
   printSizes,
   onAddToCart,
+  onPhotoClick,
 }: PhotoCardProps) {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -52,16 +52,18 @@ export default function PhotoCard({
       transition={{ duration: 0.3 }}
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div
+        className="relative aspect-[4/3] overflow-hidden cursor-pointer"
+        onClick={onPhotoClick}
+      >
         <img
           src={photoUrl}
           alt={filename}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
+          onContextMenu={(e) => e.preventDefault()}
+          draggable={false}
         />
-        <div className="watermark-overlay">
-          <span className="watermark-text">{watermarkText}</span>
-        </div>
       </div>
       <div className="p-3 space-y-2">
         <div className="flex gap-2">
