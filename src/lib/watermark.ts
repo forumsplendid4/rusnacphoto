@@ -5,7 +5,7 @@
 export async function applyWatermark(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
 
-  const maxDimension = 1400;
+  const maxDimension = 1200;
   const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
@@ -59,7 +59,7 @@ export async function applyWatermark(file: File): Promise<Blob> {
         resolve(blob);
       },
       "image/jpeg",
-      0.45,
+      0.35,
     );
   });
 }
