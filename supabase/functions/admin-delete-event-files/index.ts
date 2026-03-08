@@ -37,39 +37,27 @@ Deno.serve(async (req) => {
     // Get all photo paths for this event
     const { data: photos } = await supabase
       .from("photos")
-      .select("storage_path, original_storage_path")
+      .select("storage_path")
       .eq("event_id", event_id);
 
     const deletedFiles: string[] = [];
     const errors: string[] = [];
 
     if (photos && photos.length > 0) {
-      // Collect paths
-      const previewPaths = photos.map((p: any) => p.storage_path).filter(Boolean);
-      const originalPaths = photos.map((p: any) => p.original_storage_path).filter(Boolean);
+      const paths = photos.map((p: any) => p.storage_path).filter(Boolean);
 
-      // Delete from event-photos bucket
-      if (previewPaths.length > 0) {
-        const { data, error } = await supabase.storage.from("event-photos").remove(previewPaths);
+      if (paths.length > 0) {
+        const { data, error } = await supabase.storage.from("event-photos").remove(paths);
         if (error) errors.push(`event-photos: ${error.message}`);
-        else deletedFiles.push(...(data || []).map((f: any) => f.name));
-      }
-
-      // Delete from event-originals bucket
-      if (originalPaths.length > 0) {
-        const { data, error } = await supabase.storage.from("event-originals").remove(originalPaths);
-        if (error) errors.push(`event-originals: ${error.message}`);
         else deletedFiles.push(...(data || []).map((f: any) => f.name));
       }
     }
 
     // Also try to remove the event folder itself (list remaining files)
-    for (const bucket of ["event-photos", "event-originals"]) {
-      const { data: remaining } = await supabase.storage.from(bucket).list(event_id);
-      if (remaining && remaining.length > 0) {
-        const paths = remaining.map((f: any) => `${event_id}/${f.name}`);
-        await supabase.storage.from(bucket).remove(paths);
-      }
+    const { data: remaining } = await supabase.storage.from("event-photos").list(event_id);
+    if (remaining && remaining.length > 0) {
+      const paths = remaining.map((f: any) => `${event_id}/${f.name}`);
+      await supabase.storage.from("event-photos").remove(paths);
     }
 
     // Now delete the event from DB (cascades to photos, orders, order_items)
