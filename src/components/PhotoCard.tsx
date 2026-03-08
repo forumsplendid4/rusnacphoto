@@ -14,6 +14,7 @@ import {
 interface PrintSize {
   id: string;
   name: string;
+  price: number;
 }
 
 interface PhotoCardProps {
@@ -21,7 +22,7 @@ interface PhotoCardProps {
   filename: string;
   photoId: string;
   printSizes: PrintSize[];
-  onAddToCart: (photoId: string, printSizeId: string, printSizeName: string, quantity: number) => void;
+  onAddToCart: (photoId: string, printSizeId: string, printSizeName: string, printSizePrice: number, quantity: number) => void;
   onPhotoClick: () => void;
 }
 
@@ -38,13 +39,18 @@ export default function PhotoCard({
   const [added, setAdded] = useState(false);
   const { t } = useLocale();
 
+  const selectedPrintSize = printSizes.find((s) => s.id === selectedSize);
+
   const handleAdd = () => {
-    if (!selectedSize) return;
-    const size = printSizes.find((s) => s.id === selectedSize);
-    if (!size) return;
-    onAddToCart(photoId, selectedSize, size.name, quantity);
+    if (!selectedSize || !selectedPrintSize) return;
+    onAddToCart(photoId, selectedSize, selectedPrintSize.name, selectedPrintSize.price, quantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
+  };
+
+  const formatPrice = (price: number) => {
+    if (price <= 0) return "";
+    return `${price} MDL`;
   };
 
   return (
@@ -73,7 +79,7 @@ export default function PhotoCard({
             <SelectContent>
               {printSizes.map((size) => (
                 <SelectItem key={size.id} value={size.id}>
-                  {size.name}
+                  {size.name}{size.price > 0 ? ` — ${size.price} MDL` : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -91,6 +97,11 @@ export default function PhotoCard({
             </SelectContent>
           </Select>
         </div>
+        {selectedPrintSize && selectedPrintSize.price > 0 && (
+          <p className="text-xs text-muted-foreground text-right">
+            {formatPrice(selectedPrintSize.price * quantity)}
+          </p>
+        )}
         <Button onClick={handleAdd} disabled={!selectedSize} className="w-full h-9 text-sm" variant={added ? "secondary" : "default"}>
           {added ? (
             <>
