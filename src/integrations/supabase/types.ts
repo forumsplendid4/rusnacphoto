@@ -149,6 +149,7 @@ export type Database = {
           event_id: string
           filename: string
           id: string
+          original_storage_path: string | null
           sort_order: number
           storage_path: string
         }
@@ -157,6 +158,7 @@ export type Database = {
           event_id: string
           filename: string
           id?: string
+          original_storage_path?: string | null
           sort_order?: number
           storage_path: string
         }
@@ -165,6 +167,7 @@ export type Database = {
           event_id?: string
           filename?: string
           id?: string
+          original_storage_path?: string | null
           sort_order?: number
           storage_path?: string
         }
@@ -213,6 +216,16 @@ export type Database = {
               p_admin_token: string
               p_event_id: string
               p_filename: string
+              p_storage_path: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_admin_token: string
+              p_event_id: string
+              p_filename: string
+              p_original_storage_path?: string
               p_storage_path: string
             }
             Returns: undefined
@@ -294,6 +307,17 @@ export type Database = {
               quantity: number
             }[]
           }
+      admin_get_orders_for_print: {
+        Args: { p_admin_token: string; p_event_id: string }
+        Returns: {
+          customer_name: string
+          original_storage_path: string
+          photo_filename: string
+          print_size_name: string
+          quantity: number
+          storage_path: string
+        }[]
+      }
       admin_get_print_sizes: {
         Args: { p_admin_token: string }
         Returns: {
