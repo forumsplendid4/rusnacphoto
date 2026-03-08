@@ -438,6 +438,8 @@ export default function AdminDashboard() {
               </div>
             )}
           </DialogContent>
+        </Dialog>
+
         <EventPhotosManagerDialog
           open={!!managePhotosEvent}
           eventId={managePhotosEvent?.id || null}
