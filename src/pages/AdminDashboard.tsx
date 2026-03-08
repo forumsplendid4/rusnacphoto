@@ -218,12 +218,13 @@ export default function AdminDashboard() {
 
           const baseName = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
           const previewPath = `${eventId}/${baseName}.jpeg`;
-          const originalPath = `${eventId}/${baseName}-original.jpeg`;
+          const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.')) : '.jpeg';
+          const originalPath = `${eventId}/${baseName}-original${ext}`;
 
           // Upload both in parallel
           const [previewResult, originalResult] = await Promise.all([
             supabase.storage.from("event-photos").upload(previewPath, watermarkedBlob, { contentType: "image/jpeg" }),
-            supabase.storage.from("event-originals").upload(originalPath, originalBlob, { contentType: "image/jpeg" }),
+            supabase.storage.from("event-originals").upload(originalPath, originalBlob, { contentType: file.type || "image/jpeg" }),
           ]);
 
           if (cancelRef.current) break;
