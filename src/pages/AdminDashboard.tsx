@@ -377,6 +377,10 @@ export default function AdminDashboard() {
                     <Eye className="w-4 h-4 mr-1" /> Заказы
                   </Button>
 
+                  <Button variant="outline" size="sm" onClick={() => setManagePhotosEvent(event)}>
+                    <Images className="w-4 h-4 mr-1" /> Управлять фото
+                  </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
