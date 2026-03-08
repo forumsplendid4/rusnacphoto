@@ -68,7 +68,7 @@ export default function AdminDashboard() {
 
   const loadEvents = async () => {
     // Use RPC to bypass RLS for admin
-    const { data, error } = await supabase.rpc("admin_get_events");
+    const { data, error } = await (supabase.rpc as any)("admin_get_events");
     if (error) {
       console.error(error);
       toast.error("Ошибка загрузки мероприятий");
