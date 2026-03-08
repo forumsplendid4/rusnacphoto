@@ -196,7 +196,7 @@ export default function EventPage() {
         {photos.length === 0 ? (
           <p className="text-center text-muted-foreground py-16">{t.event.notUploaded}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {photos.map((photo, index) => (
               <PhotoCard
                 key={photo.id}

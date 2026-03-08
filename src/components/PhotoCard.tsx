@@ -54,7 +54,7 @@ export default function PhotoCard({
       transition={{ duration: 0.3 }}
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
-      <div className="relative aspect-[4/3] overflow-hidden cursor-pointer bg-secondary/40" onClick={onPhotoClick}>
+      <div className="relative aspect-[3/4] md:aspect-[4/3] overflow-hidden cursor-pointer bg-secondary/40" onClick={onPhotoClick}>
         <img
           src={photoUrl}
           alt={filename}
