@@ -4,6 +4,7 @@ export interface CartItem {
   filename: string;
   printSizeId: string;
   printSizeName: string;
+  printSizePrice: number;
   quantity: number;
 }
 
@@ -51,4 +52,8 @@ export function updateCartQuantity(eventId: string, photoId: string, printSizeId
   }
   saveCart(eventId, cart);
   return cart;
+}
+
+export function getCartTotal(items: CartItem[]): number {
+  return items.reduce((sum, item) => sum + item.printSizePrice * item.quantity, 0);
 }
