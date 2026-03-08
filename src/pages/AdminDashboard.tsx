@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { isAdminAuthenticated, setAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,12 @@ import {
   FileSpreadsheet,
   Eye,
   ExternalLink,
+  Images,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { applyWatermark } from "@/lib/watermark";
-
+import EventPhotosManagerDialog from "@/components/admin/EventPhotosManagerDialog";
 interface Event {
   id: string;
   title: string;
