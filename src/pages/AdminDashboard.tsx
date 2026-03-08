@@ -421,17 +421,21 @@ export default function AdminDashboard() {
               <p className="text-center py-8 text-muted-foreground">Заказов пока нет</p>
             ) : (
               <div className="space-y-3">
-                {orders.map((o: any, i: number) => (
-                  <div key={i} className="p-3 rounded-lg bg-secondary/50 text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{o.customer_name}</span>
-                      <span className="text-muted-foreground">{o.customer_phone}</span>
+                {groupedOrders.map((group, i) => (
+                  <div key={i} className="p-4 rounded-lg bg-secondary/50 text-sm">
+                    <div className="flex justify-between mb-2">
+                      <span className="font-semibold">{group.customer_name}</span>
+                      <span className="text-muted-foreground">{group.customer_phone}</span>
                     </div>
-                    <p className="text-muted-foreground mt-1">
-                      {o.filename} · {o.print_size_name} · x{o.quantity}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(o.created_at).toLocaleString("ru-RU")}
+                    <div className="space-y-1 ml-2 border-l-2 border-border pl-3">
+                      {group.items.map((item, j) => (
+                        <p key={j} className="text-muted-foreground">
+                          {item.filename} · {item.print_size_name} · x{item.quantity}
+                        </p>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(group.created_at).toLocaleString("ru-RU")}
                     </p>
                   </div>
                 ))}
