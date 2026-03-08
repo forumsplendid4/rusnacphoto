@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { setAdminAuthenticated } from "@/lib/admin-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Camera } from "lucide-react";
+import { Lock, Camera, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminLogin() {
