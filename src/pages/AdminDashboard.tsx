@@ -229,6 +229,7 @@ export default function AdminDashboard() {
               p_event_id: eventId,
               p_storage_path: previewPath,
               p_filename: file.name,
+              p_original_storage_path: null,
             });
             if (dbError) failedCount++;
             else successCount++;
