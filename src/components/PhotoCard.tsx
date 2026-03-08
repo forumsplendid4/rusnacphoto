@@ -52,10 +52,10 @@ export default function PhotoCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="group w-full max-w-[320px] mx-auto rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
+      className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
       <div
-        className="relative aspect-[3/4] overflow-hidden cursor-pointer bg-secondary/20"
+        className="relative aspect-square overflow-hidden cursor-pointer bg-secondary/20"
         onClick={onPhotoClick}
       >
         <img
