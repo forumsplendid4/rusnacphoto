@@ -60,13 +60,21 @@ export default function PhotoCard({
       >
         <img
           src={photoUrl}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40 pointer-events-none"
+          loading="lazy"
+          draggable={false}
+        />
+        <img
+          src={photoUrl}
           alt={filename}
-          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02] pointer-events-none"
+          className="relative z-10 w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02] pointer-events-none"
           loading="lazy"
           onContextMenu={(e) => e.preventDefault()}
           draggable={false}
         />
-        <div className="absolute inset-0" onContextMenu={(e) => e.preventDefault()} />
+        <div className="absolute inset-0 z-20" onContextMenu={(e) => e.preventDefault()} />
       </div>
       <div className="p-3 space-y-2">
         <div className="flex gap-2">
