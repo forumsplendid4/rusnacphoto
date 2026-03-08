@@ -113,7 +113,7 @@ export default function AdminDashboard() {
   };
 
   const handleToggleActive = async (eventId: string, active: boolean) => {
-    const { error } = await supabase.rpc("admin_toggle_event", {
+    const { error } = await (supabase.rpc as any)("admin_toggle_event", {
       p_event_id: eventId,
       p_active: active,
     });
