@@ -36,6 +36,7 @@ export default function PhotoCard({
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
   const { t } = useLocale();
 
   const handleAdd = () => {
