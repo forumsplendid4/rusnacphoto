@@ -61,6 +61,18 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
 
+  const groupedOrders = useMemo(() => {
+    const map = new Map<string, { customer_name: string; customer_phone: string; created_at: string; items: { filename: string; print_size_name: string; quantity: number }[] }>();
+    for (const o of orders) {
+      const key = `${o.customer_name}|${o.customer_phone}|${o.created_at}`;
+      if (!map.has(key)) {
+        map.set(key, { customer_name: o.customer_name, customer_phone: o.customer_phone, created_at: o.created_at, items: [] });
+      }
+      map.get(key)!.items.push({ filename: o.filename, print_size_name: o.print_size_name, quantity: o.quantity });
+    }
+    return Array.from(map.values());
+  }, [orders]);
+
   useEffect(() => {
     if (!isAdminAuthenticated()) {
       navigate("/admin/login");
