@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PhotoCard from "@/components/PhotoCard";
+import PhotoLightbox from "@/components/PhotoLightbox";
 import CartDrawer from "@/components/CartDrawer";
 import { CartItem, getCart, addToCart, clearCart } from "@/lib/cart";
 import { Camera, ArrowLeft } from "lucide-react";
@@ -32,6 +33,7 @@ export default function EventPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -135,15 +137,15 @@ export default function EventPage() {
           <p className="text-center text-muted-foreground py-16">Фотографии пока не загружены</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map((photo) => (
+            {photos.map((photo, index) => (
               <PhotoCard
                 key={photo.id}
                 photoId={photo.id}
                 photoUrl={getPhotoUrl(photo.storage_path)}
                 filename={photo.filename}
-                watermarkText={event.watermark_text}
                 printSizes={printSizes}
                 onAddToCart={handleAddToCart}
+                onPhotoClick={() => setLightboxIndex(index)}
               />
             ))}
           </div>
@@ -155,6 +157,16 @@ export default function EventPage() {
         items={cart}
         onCartUpdate={setCart}
         onOrderPlaced={handleOrderPlaced}
+      />
+
+      <PhotoLightbox
+        isOpen={lightboxIndex !== null}
+        photoUrl={lightboxIndex !== null ? getPhotoUrl(photos[lightboxIndex].storage_path) : ""}
+        onClose={() => setLightboxIndex(null)}
+        onPrev={() => setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))}
+        onNext={() => setLightboxIndex((i) => (i !== null && i < photos.length - 1 ? i + 1 : i))}
+        hasPrev={lightboxIndex !== null && lightboxIndex > 0}
+        hasNext={lightboxIndex !== null && lightboxIndex < photos.length - 1}
       />
     </div>
   );
