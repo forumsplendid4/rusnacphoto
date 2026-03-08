@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShoppingCart, Trash2, Minus, Plus, Send } from "lucide-react";
 import { CartItem, updateCartQuantity, removeFromCart } from "@/lib/cart";
-import { supabase } from "@/integrations/supabase/client";
+import { callRpc } from "@/lib/rpc";
 import { useLocale } from "@/contexts/LocaleContext";
 import { toast } from "sonner";
 
@@ -62,7 +62,7 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
         quantity: item.quantity,
       }));
 
-      const { error } = await (supabase.rpc as any)("create_order_with_items", {
+      const { error } = await callRpc("create_order_with_items", {
         p_event_id: eventId,
         p_customer_name: name.trim(),
         p_customer_phone: phone.trim(),
@@ -83,6 +83,12 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
           locale === "ro"
             ? "Unele poze/mărimi nu mai sunt disponibile. Reîncarcă pagina și încearcă din nou."
             : "Некоторые фото/размеры больше недоступны. Обновите страницу и попробуйте снова.",
+        );
+      } else if (message.includes("event_not_active")) {
+        toast.error(
+          locale === "ro"
+            ? "Evenimentul nu mai este activ."
+            : "Мероприятие больше не активно.",
         );
       } else {
         toast.error(t.cart.error);

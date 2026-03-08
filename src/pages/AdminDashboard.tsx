@@ -1,12 +1,14 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAdminAuthenticated, setAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { callRpc } from "@/lib/rpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Camera,
   Plus,
@@ -24,11 +36,13 @@ import {
   Eye,
   ExternalLink,
   Images,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { applyWatermark } from "@/lib/watermark";
 import EventPhotosManagerDialog from "@/components/admin/EventPhotosManagerDialog";
+
 interface Event {
   id: string;
   title: string;
@@ -39,6 +53,15 @@ interface Event {
   created_at: string;
   photo_count?: number;
   order_count?: number;
+}
+
+interface UploadProgress {
+  total: number;
+  processed: number;
+  success: number;
+  failed: number;
+  startedAt: number;
+  eventId: string;
 }
 
 export default function AdminDashboard() {
@@ -52,8 +75,9 @@ export default function AdminDashboard() {
   const [creating, setCreating] = useState(false);
 
   // Photo upload state
-  const [uploadEventId, setUploadEventId] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const cancelRef = useRef(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [managePhotosEvent, setManagePhotosEvent] = useState<Event | null>(null);
 
   // Orders view
@@ -82,13 +106,12 @@ export default function AdminDashboard() {
   }, []);
 
   const loadEvents = async () => {
-    // Use RPC to bypass RLS for admin
-    const { data, error } = await (supabase.rpc as any)("admin_get_events");
+    const { data, error } = await callRpc("admin_get_events", {});
     if (error) {
       console.error(error);
       toast.error("Ошибка загрузки мероприятий");
     }
-    setEvents(data || []);
+    setEvents((data as Event[]) || []);
     setLoading(false);
   };
 
@@ -106,7 +129,7 @@ export default function AdminDashboard() {
     if (!newTitle.trim()) return;
     setCreating(true);
     try {
-      const { error } = await (supabase.rpc as any)("admin_create_event", {
+      const { error } = await callRpc("admin_create_event", {
         p_title: newTitle.trim(),
         p_slug: generateSlug(newTitle.trim()),
         p_description: newDescription.trim() || null,
@@ -128,7 +151,7 @@ export default function AdminDashboard() {
   };
 
   const handleToggleActive = async (eventId: string, active: boolean) => {
-    const { error } = await (supabase.rpc as any)("admin_toggle_event", {
+    const { error } = await callRpc("admin_toggle_event", {
       p_event_id: eventId,
       p_active: active,
     });
@@ -142,57 +165,91 @@ export default function AdminDashboard() {
   };
 
   const handleUploadPhotos = async (eventId: string, files: FileList) => {
-    setUploading(true);
     const event = events.find((e) => e.id === eventId);
     const watermarkText = event?.watermark_text || "PREVIEW";
-
     const fileArray = Array.from(files);
+
+    cancelRef.current = false;
+    setUploadProgress({
+      total: fileArray.length,
+      processed: 0,
+      success: 0,
+      failed: 0,
+      startedAt: Date.now(),
+      eventId,
+    });
+
     const workersCount = Math.min(4, fileArray.length);
     let pointer = 0;
     let successCount = 0;
+    let failedCount = 0;
 
     const worker = async () => {
       while (pointer < fileArray.length) {
+        if (cancelRef.current) break;
         const currentIndex = pointer;
         pointer += 1;
         const file = fileArray[currentIndex];
 
         try {
           const watermarkedBlob = await applyWatermark(file, watermarkText);
-          const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
+          if (cancelRef.current) break;
 
+          const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
           const { error: uploadError } = await supabase.storage
             .from("event-photos")
             .upload(path, watermarkedBlob, { contentType: "image/jpeg" });
 
-          if (uploadError) continue;
+          if (cancelRef.current) break;
 
-          const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
-            p_event_id: eventId,
-            p_storage_path: path,
-            p_filename: file.name,
-          });
-
-          if (!dbError) successCount++;
+          if (uploadError) {
+            failedCount++;
+          } else {
+            const { error: dbError } = await callRpc("admin_add_photo", {
+              p_event_id: eventId,
+              p_storage_path: path,
+              p_filename: file.name,
+            });
+            if (dbError) failedCount++;
+            else successCount++;
+          }
         } catch (err) {
           console.error("Upload/Watermark error:", err);
+          failedCount++;
         }
+
+        setUploadProgress((prev) =>
+          prev
+            ? { ...prev, processed: successCount + failedCount, success: successCount, failed: failedCount }
+            : null
+        );
       }
     };
 
     await Promise.all(Array.from({ length: workersCount }, worker));
 
-    toast.success(`Загружено ${successCount} из ${fileArray.length} фото`);
-    setUploading(false);
-    setUploadEventId(null);
+    if (cancelRef.current) {
+      toast.info(`Загрузка отменена. Загружено ${successCount} из ${fileArray.length}`);
+    } else {
+      toast.success(`Загружено ${successCount} из ${fileArray.length} фото`);
+    }
+
+    setUploadProgress(null);
     loadEvents();
+  };
+
+  const handleCancelUpload = () => {
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancelUpload = () => {
+    cancelRef.current = true;
+    setShowCancelConfirm(false);
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm("Удалить мероприятие и все его фото?")) return;
-    const { error } = await (supabase.rpc as any)("admin_delete_event", {
-      p_event_id: eventId,
-    });
+    const { error } = await callRpc("admin_delete_event", { p_event_id: eventId });
     if (error) {
       console.error(error);
       toast.error(`Ошибка удаления: ${error.message || "неизвестно"}`);
@@ -205,14 +262,12 @@ export default function AdminDashboard() {
   const handleViewOrders = async (eventId: string) => {
     setViewOrdersEventId(eventId);
     setOrdersLoading(true);
-    const { data, error } = await (supabase.rpc as any)("admin_get_orders", {
-      p_event_id: eventId,
-    });
+    const { data, error } = await callRpc("admin_get_orders", { p_event_id: eventId });
     if (error) {
       console.error(error);
       toast.error("Ошибка загрузки заказов");
     }
-    setOrders(data || []);
+    setOrders((data as any[]) || []);
     setOrdersLoading(false);
   };
 
@@ -240,6 +295,19 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     setAdminAuthenticated(false);
     navigate("/admin/login");
+  };
+
+  // ETA helper
+  const formatEta = (progress: UploadProgress): string => {
+    if (progress.processed === 0) return "расчёт...";
+    const elapsed = Date.now() - progress.startedAt;
+    const avg = elapsed / progress.processed;
+    const remaining = avg * (progress.total - progress.processed);
+    const secs = Math.ceil(remaining / 1000);
+    if (secs < 60) return `~${secs} сек`;
+    const mins = Math.floor(secs / 60);
+    const remSecs = secs % 60;
+    return `~${mins} мин ${remSecs} сек`;
   };
 
   if (loading) {
@@ -308,6 +376,31 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container py-6">
+        {/* Upload progress bar */}
+        {uploadProgress && (
+          <div className="mb-6 p-4 rounded-lg bg-card shadow-card space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                Загрузка фото: {uploadProgress.processed} / {uploadProgress.total}
+                {uploadProgress.failed > 0 && (
+                  <span className="text-destructive ml-1">(ошибок: {uploadProgress.failed})</span>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{formatEta(uploadProgress)}</span>
+                <button
+                  onClick={handleCancelUpload}
+                  className="w-6 h-6 rounded-full bg-muted hover:bg-destructive/20 flex items-center justify-center transition-colors"
+                  aria-label="Отменить загрузку"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            <Progress value={uploadProgress.total > 0 ? (uploadProgress.processed / uploadProgress.total) * 100 : 0} />
+          </div>
+        )}
+
         {events.length === 0 ? (
           <div className="text-center py-16">
             <Camera className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
@@ -346,16 +439,8 @@ export default function AdminDashboard() {
                     />
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                  >
-                    <a
-                      href={`/event/${event.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-4 h-4 mr-1" /> Открыть
                     </a>
                   </Button>
@@ -364,13 +449,11 @@ export default function AdminDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setUploadEventId(event.id);
                       document.getElementById(`file-${event.id}`)?.click();
                     }}
-                    disabled={uploading}
+                    disabled={!!uploadProgress}
                   >
-                    <Upload className="w-4 h-4 mr-1" />
-                    {uploading && uploadEventId === event.id ? "Загрузка..." : "Фото"}
+                    <Upload className="w-4 h-4 mr-1" /> Фото
                   </Button>
                   <input
                     id={`file-${event.id}`}
@@ -382,6 +465,7 @@ export default function AdminDashboard() {
                       if (e.target.files && e.target.files.length > 0) {
                         handleUploadPhotos(event.id, e.target.files);
                       }
+                      e.target.value = "";
                     }}
                   />
 
@@ -390,7 +474,7 @@ export default function AdminDashboard() {
                   </Button>
 
                   <Button variant="outline" size="sm" onClick={() => setManagePhotosEvent(event)}>
-                    <Images className="w-4 h-4 mr-1" /> Управлять фото
+                    <Images className="w-4 h-4 mr-1" /> Редактировать фото
                   </Button>
 
                   <Button
@@ -465,6 +549,24 @@ export default function AdminDashboard() {
           }}
           onChanged={loadEvents}
         />
+
+        {/* Cancel upload confirmation */}
+        <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>ТОЧНО ХОТИТЕ ОТМЕНИТЬ ЗАГРУЗКУ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Уже загруженные фото останутся. Отменены будут только оставшиеся в очереди.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Нет, продолжить</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmCancelUpload} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Да, отменить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
