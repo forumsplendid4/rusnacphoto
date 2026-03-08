@@ -416,21 +416,38 @@ export default function AdminDashboard() {
       const FLAT_SIZE = "10x15";
       let processed = 0;
 
+      // Track used filenames per folder to avoid collisions
+      const folderFileCount = new Map<string, Map<string, number>>();
+
       for (const item of items) {
         const filePath = item.original_storage_path || item.storage_path;
         const blob = downloadedFiles.get(filePath);
         if (!blob) { processed++; continue; }
 
-        const ext = item.photo_filename.includes(".") ? "" : ".jpeg";
-        const safeName = item.photo_filename.replace(/[/\\:*?"<>|]/g, "_") + ext;
+        const nameWithoutExt = item.photo_filename.replace(/\.[^.]+$/, "");
+        const ext = item.photo_filename.includes(".") ? item.photo_filename.substring(item.photo_filename.lastIndexOf(".")) : ".jpeg";
 
+        // Determine folder path
+        let folder: string;
         if (item.print_size_name === FLAT_SIZE) {
-          // Flat folder for 10x15
-          zip.file(`${FLAT_SIZE}/${safeName}`, blob);
+          folder = FLAT_SIZE;
         } else {
-          // Nested: {Size}/{CustomerName}/{filename}
           const safeCustomer = item.customer_name.replace(/[/\\:*?"<>|]/g, "_");
-          zip.file(`${item.print_size_name}/${safeCustomer}/${safeName}`, blob);
+          folder = `${item.print_size_name}/${safeCustomer}`;
+        }
+
+        // Create quantity copies with numbered names
+        for (let copy = 0; copy < item.quantity; copy++) {
+          if (!folderFileCount.has(folder)) folderFileCount.set(folder, new Map());
+          const nameMap = folderFileCount.get(folder)!;
+          const count = nameMap.get(nameWithoutExt) || 0;
+          nameMap.set(nameWithoutExt, count + 1);
+
+          const safeName = count === 0
+            ? `${nameWithoutExt}${ext}`
+            : `${nameWithoutExt}_${count + 1}${ext}`;
+
+          zip.file(`${folder}/${safeName}`, blob);
         }
 
         processed++;

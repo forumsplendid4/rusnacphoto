@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -22,9 +22,16 @@ export default function PhotoLightbox({
   hasNext,
 }: PhotoLightboxProps) {
   const [zoomed, setZoomed] = useState(false);
-  const [transformOrigin, setTransformOrigin] = useState("50% 50%");
+  const [origin, setOrigin] = useState({ x: 50, y: 50 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const panStart = useRef({ x: 0, y: 0 });
 
-  const resetZoom = useCallback(() => setZoomed(false), []);
+  const resetZoom = useCallback(() => {
+    setZoomed(false);
+    setPan({ x: 0, y: 0 });
+  }, []);
 
   useEffect(() => { resetZoom(); }, [photoUrl, resetZoom]);
   useEffect(() => { if (!isOpen) resetZoom(); }, [isOpen, resetZoom]);
@@ -44,19 +51,48 @@ export default function PhotoLightbox({
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    if (isDragging.current) return;
+
     if (zoomed) {
-      setZoomed(false);
+      resetZoom();
     } else {
-      setTransformOrigin(`${x}% ${y}%`);
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      setOrigin({ x, y });
+      setPan({ x: 0, y: 0 });
       setZoomed(true);
     }
   };
 
+  // Pan support when zoomed
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!zoomed) return;
+    isDragging.current = false;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    panStart.current = { ...pan };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!zoomed) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      isDragging.current = true;
+      setPan({ x: panStart.current.x + dx, y: panStart.current.y + dy });
+    }
+  };
+
+  const handlePointerUp = () => {
+    // isDragging stays true so click handler can check it, reset on next tick
+    setTimeout(() => { isDragging.current = false; }, 0);
+  };
+
   const handlePrev = (e: React.MouseEvent) => { e.stopPropagation(); resetZoom(); onPrev?.(); };
   const handleNext = (e: React.MouseEvent) => { e.stopPropagation(); resetZoom(); onNext?.(); };
+
+  const SCALE = 2.5;
 
   return (
     <AnimatePresence>
@@ -88,31 +124,42 @@ export default function PhotoLightbox({
             </button>
           )}
 
-          {/* Wrapper for enter/exit animation — does NOT use scale */}
-          <motion.div
-            key={photoUrl}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className="relative overflow-hidden"
-            style={{ maxWidth: "90vw", maxHeight: "90vh" }}
+          <div
+            className="relative"
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              overflow: zoomed ? "visible" : "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Inner img handles zoom via its own transform — no conflict */}
-            <img
-              src={photoUrl}
-              alt=""
-              className={`max-w-[90vw] max-h-[90vh] object-contain rounded-lg select-none ${zoomed ? "cursor-zoom-out" : "cursor-zoom-in"}`}
-              draggable={false}
-              onContextMenu={(e) => e.preventDefault()}
-              onClick={handleImageClick}
-              style={{
-                transform: zoomed ? "scale(2.5)" : "scale(1)",
-                transformOrigin,
-                transition: "transform 0.3s ease",
-              }}
-            />
-          </motion.div>
+            <motion.div
+              key={photoUrl}
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.2 }}
+            >
+              <img
+                src={photoUrl}
+                alt=""
+                className={`max-w-[90vw] max-h-[90vh] object-contain rounded-lg select-none ${zoomed ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"}`}
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+                onClick={handleImageClick}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                style={{
+                  transform: zoomed
+                    ? `scale(${SCALE}) translate(${pan.x / SCALE}px, ${pan.y / SCALE}px)`
+                    : "scale(1)",
+                  transformOrigin: `${origin.x}% ${origin.y}%`,
+                  transition: isDragging.current ? "none" : "transform 0.3s ease",
+                }}
+              />
+            </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
