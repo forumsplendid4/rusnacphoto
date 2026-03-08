@@ -387,26 +387,30 @@ export default function AdminDashboard() {
         }
       }
 
-      // 4. Download files and build ZIP
+      // 4. Download files in parallel batches
       const zip = new JSZip();
       const downloadedFiles = new Map<string, Blob>();
       let downloaded = 0;
+      const BATCH_SIZE = 6;
 
       setZipProgress({ status: "Скачивание фото...", current: 0, total: allPaths.length });
 
-      // Download unique files
-      for (const path of allPaths) {
-        const url = signedUrls[path];
-        if (!url) continue;
-        try {
-          const resp = await fetch(url);
-          if (resp.ok) {
-            downloadedFiles.set(path, await resp.blob());
-          }
-        } catch (e) {
-          console.error("Download error:", path, e);
-        }
-        downloaded++;
+      for (let i = 0; i < allPaths.length; i += BATCH_SIZE) {
+        const batch = allPaths.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(async (path) => {
+            const url = signedUrls[path];
+            if (!url) return;
+            const resp = await fetch(url);
+            if (resp.ok) {
+              downloadedFiles.set(path, await resp.blob());
+            }
+          }),
+        );
+        results.forEach((r) => {
+          if (r.status === "rejected") console.error("Download error:", r.reason);
+        });
+        downloaded += batch.length;
         setZipProgress({ status: "Скачивание фото...", current: downloaded, total: allPaths.length });
       }
 
