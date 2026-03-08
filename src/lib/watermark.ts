@@ -65,38 +65,8 @@ export async function applyWatermark(file: File): Promise<Blob> {
 }
 
 /**
- * Compresses an image without watermark (for originals).
- * Returns JPEG Blob at high quality.
+ * Returns the original file as-is for maximum print quality.
  */
 export async function compressOriginal(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-
-  const maxDimension = 2400;
-  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    bitmap.close();
-    throw new Error("Canvas not supported");
-  }
-
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) { reject(new Error("Failed to create blob")); return; }
-        resolve(blob);
-      },
-      "image/jpeg",
-      0.92,
-    );
-  });
+  return file;
 }
