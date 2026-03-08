@@ -204,48 +204,147 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_add_photo: {
-        Args: { p_event_id: string; p_filename: string; p_storage_path: string }
+      admin_add_photo:
+        | {
+            Args: {
+              p_admin_token: string
+              p_event_id: string
+              p_filename: string
+              p_storage_path: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_event_id: string
+              p_filename: string
+              p_storage_path: string
+            }
+            Returns: undefined
+          }
+      admin_create_event:
+        | {
+            Args: {
+              p_admin_token: string
+              p_description?: string
+              p_slug: string
+              p_title: string
+              p_watermark_text?: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_description?: string
+              p_slug: string
+              p_title: string
+              p_watermark_text?: string
+            }
+            Returns: undefined
+          }
+      admin_create_print_size: {
+        Args: { p_admin_token: string; p_name: string; p_price?: number }
         Returns: undefined
       }
-      admin_create_event: {
-        Args: {
-          p_description?: string
-          p_slug: string
-          p_title: string
-          p_watermark_text?: string
-        }
+      admin_delete_event:
+        | {
+            Args: { p_admin_token: string; p_event_id: string }
+            Returns: undefined
+          }
+        | { Args: { p_event_id: string }; Returns: undefined }
+      admin_delete_photo:
+        | {
+            Args: { p_admin_token: string; p_photo_id: string }
+            Returns: undefined
+          }
+        | { Args: { p_photo_id: string }; Returns: undefined }
+      admin_delete_print_size: {
+        Args: { p_admin_token: string; p_id: string }
         Returns: undefined
       }
-      admin_delete_event: { Args: { p_event_id: string }; Returns: undefined }
-      admin_delete_photo: { Args: { p_photo_id: string }; Returns: undefined }
-      admin_get_events: {
-        Args: never
+      admin_get_events:
+        | {
+            Args: never
+            Returns: {
+              created_at: string
+              description: string
+              id: string
+              is_active: boolean
+              order_count: number
+              photo_count: number
+              slug: string
+              title: string
+              watermark_text: string
+            }[]
+          }
+        | {
+            Args: { p_admin_token?: string }
+            Returns: {
+              created_at: string
+              description: string
+              id: string
+              is_active: boolean
+              order_count: number
+              photo_count: number
+              slug: string
+              title: string
+              watermark_text: string
+            }[]
+          }
+      admin_get_orders:
+        | {
+            Args: { p_admin_token: string; p_event_id: string }
+            Returns: {
+              created_at: string
+              customer_name: string
+              customer_phone: string
+              filename: string
+              print_size_name: string
+              quantity: number
+            }[]
+          }
+        | {
+            Args: { p_event_id: string }
+            Returns: {
+              created_at: string
+              customer_name: string
+              customer_phone: string
+              filename: string
+              print_size_name: string
+              quantity: number
+            }[]
+          }
+      admin_get_print_sizes: {
+        Args: { p_admin_token: string }
         Returns: {
-          created_at: string
-          description: string
           id: string
           is_active: boolean
-          order_count: number
-          photo_count: number
-          slug: string
-          title: string
-          watermark_text: string
+          name: string
+          price: number
+          sort_order: number
         }[]
       }
-      admin_get_orders: {
-        Args: { p_event_id: string }
-        Returns: {
-          created_at: string
-          customer_name: string
-          customer_phone: string
-          filename: string
-          print_size_name: string
-          quantity: number
-        }[]
-      }
-      admin_toggle_event: {
-        Args: { p_active: boolean; p_event_id: string }
+      admin_toggle_event:
+        | {
+            Args: {
+              p_active: boolean
+              p_admin_token: string
+              p_event_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: { p_active: boolean; p_event_id: string }
+            Returns: undefined
+          }
+      admin_update_print_size: {
+        Args: {
+          p_admin_token: string
+          p_id: string
+          p_is_active: boolean
+          p_name: string
+          p_price: number
+        }
         Returns: undefined
       }
       create_order_with_items: {
@@ -261,6 +360,7 @@ export type Database = {
         Args: { input_password: string }
         Returns: boolean
       }
+      verify_admin_token: { Args: { p_token: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
