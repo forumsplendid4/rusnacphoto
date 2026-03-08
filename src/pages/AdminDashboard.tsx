@@ -129,28 +129,35 @@ export default function AdminDashboard() {
 
   const handleUploadPhotos = async (eventId: string, files: FileList) => {
     setUploading(true);
+    const event = events.find((e) => e.id === eventId);
+    const watermarkText = event?.watermark_text || "PREVIEW";
     let count = 0;
     for (const file of Array.from(files)) {
-      const ext = file.name.split(".").pop();
-      const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+      try {
+        // Embed watermark into the image
+        const watermarkedBlob = await applyWatermark(file, watermarkText);
+        const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("event-photos")
-        .upload(path, file);
+        const { error: uploadError } = await supabase.storage
+          .from("event-photos")
+          .upload(path, watermarkedBlob, { contentType: "image/jpeg" });
 
-      if (uploadError) {
-        console.error(uploadError);
-        continue;
+        if (uploadError) {
+          console.error(uploadError);
+          continue;
+        }
+
+        const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
+          p_event_id: eventId,
+          p_storage_path: path,
+          p_filename: file.name,
+        });
+
+        if (dbError) console.error(dbError);
+        else count++;
+      } catch (err) {
+        console.error("Watermark error:", err);
       }
-
-      const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
-        p_event_id: eventId,
-        p_storage_path: path,
-        p_filename: file.name,
-      });
-
-      if (dbError) console.error(dbError);
-      else count++;
     }
     toast.success(`Загружено ${count} фото`);
     setUploading(false);
