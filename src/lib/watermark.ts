@@ -59,7 +59,7 @@ export async function applyWatermark(file: File): Promise<Blob> {
         resolve(blob);
       },
       "image/jpeg",
-      0.65,
+      0.45,
     );
   });
 }
