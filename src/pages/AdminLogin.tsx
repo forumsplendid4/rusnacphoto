@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { setAdminAuthenticated } from "@/lib/admin-auth";
+import { setAdminToken } from "@/lib/admin-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,7 @@ export default function AdminLogin() {
       if (error) throw error;
 
       if (data) {
-        setAdminAuthenticated(true);
+        setAdminToken(password);
         navigate("/admin");
       } else {
         toast.error("Неверный пароль");

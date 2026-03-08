@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { callRpc } from "@/lib/rpc";
+import { getAdminToken } from "@/lib/admin-auth";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 
@@ -87,7 +89,7 @@ export default function EventPhotosManagerDialog({
 
     setDeleting(true);
     const results = await Promise.allSettled(
-      selectedIds.map((photoId) => (supabase.rpc as any)("admin_delete_photo", { p_photo_id: photoId })),
+      selectedIds.map((photoId) => callRpc("admin_delete_photo", { p_admin_token: getAdminToken(), p_photo_id: photoId })),
     );
 
     const failed = results.filter(

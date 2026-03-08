@@ -25,6 +25,7 @@ interface Photo {
 interface PrintSize {
   id: string;
   name: string;
+  price: number;
 }
 
 type PhotoUrlMode = "thumb" | "full" | "cart";
@@ -84,7 +85,7 @@ export default function EventPage() {
         .order("sort_order"),
       supabase
         .from("print_sizes")
-        .select("id, name")
+        .select("id, name, price")
         .eq("is_active", true)
         .order("sort_order"),
     ]);
@@ -126,7 +127,7 @@ export default function EventPage() {
     return map;
   }, [photos]);
 
-  const handleAddToCart = (photoId: string, printSizeId: string, printSizeName: string, quantity: number) => {
+  const handleAddToCart = (photoId: string, printSizeId: string, printSizeName: string, printSizePrice: number, quantity: number) => {
     if (!event) return;
     const photo = photos.find((p) => p.id === photoId);
     if (!photo) return;
@@ -139,6 +140,7 @@ export default function EventPage() {
         filename: photo.filename,
         printSizeId,
         printSizeName,
+        printSizePrice,
       },
       quantity,
     );

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { isAdminAuthenticated, setAdminAuthenticated } from "@/lib/admin-auth";
+import { isAdminAuthenticated, getAdminToken, clearAdminToken } from "@/lib/admin-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { callRpc } from "@/lib/rpc";
 import { Button } from "@/components/ui/button";
@@ -37,11 +37,13 @@ import {
   ExternalLink,
   Images,
   X,
+  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { applyWatermark } from "@/lib/watermark";
 import EventPhotosManagerDialog from "@/components/admin/EventPhotosManagerDialog";
+import PrintSizesManagerDialog from "@/components/admin/PrintSizesManagerDialog";
 
 interface Event {
   id: string;
@@ -73,17 +75,18 @@ export default function AdminDashboard() {
   const [newDescription, setNewDescription] = useState("");
   const [newWatermark, setNewWatermark] = useState("PREVIEW");
   const [creating, setCreating] = useState(false);
+  const [printSizesOpen, setPrintSizesOpen] = useState(false);
 
-  // Photo upload state
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const cancelRef = useRef(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [managePhotosEvent, setManagePhotosEvent] = useState<Event | null>(null);
 
-  // Orders view
   const [viewOrdersEventId, setViewOrdersEventId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const token = getAdminToken();
 
   const groupedOrders = useMemo(() => {
     const map = new Map<string, { customer_name: string; customer_phone: string; created_at: string; items: { filename: string; print_size_name: string; quantity: number }[] }>();
@@ -106,8 +109,14 @@ export default function AdminDashboard() {
   }, []);
 
   const loadEvents = async () => {
-    const { data, error } = await callRpc("admin_get_events", {});
+    const { data, error } = await callRpc("admin_get_events", { p_admin_token: token });
     if (error) {
+      if (error.message?.includes("unauthorized")) {
+        toast.error("Сессия истекла. Войдите снова.");
+        clearAdminToken();
+        navigate("/admin/login");
+        return;
+      }
       console.error(error);
       toast.error("Ошибка загрузки мероприятий");
     }
@@ -130,6 +139,7 @@ export default function AdminDashboard() {
     setCreating(true);
     try {
       const { error } = await callRpc("admin_create_event", {
+        p_admin_token: token,
         p_title: newTitle.trim(),
         p_slug: generateSlug(newTitle.trim()),
         p_description: newDescription.trim() || null,
@@ -152,6 +162,7 @@ export default function AdminDashboard() {
 
   const handleToggleActive = async (eventId: string, active: boolean) => {
     const { error } = await callRpc("admin_toggle_event", {
+      p_admin_token: token,
       p_event_id: eventId,
       p_active: active,
     });
@@ -206,6 +217,7 @@ export default function AdminDashboard() {
             failedCount++;
           } else {
             const { error: dbError } = await callRpc("admin_add_photo", {
+              p_admin_token: token,
               p_event_id: eventId,
               p_storage_path: path,
               p_filename: file.name,
@@ -249,7 +261,7 @@ export default function AdminDashboard() {
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm("Удалить мероприятие и все его фото?")) return;
-    const { error } = await callRpc("admin_delete_event", { p_event_id: eventId });
+    const { error } = await callRpc("admin_delete_event", { p_admin_token: token, p_event_id: eventId });
     if (error) {
       console.error(error);
       toast.error(`Ошибка удаления: ${error.message || "неизвестно"}`);
@@ -262,7 +274,7 @@ export default function AdminDashboard() {
   const handleViewOrders = async (eventId: string) => {
     setViewOrdersEventId(eventId);
     setOrdersLoading(true);
-    const { data, error } = await callRpc("admin_get_orders", { p_event_id: eventId });
+    const { data, error } = await callRpc("admin_get_orders", { p_admin_token: token, p_event_id: eventId });
     if (error) {
       console.error(error);
       toast.error("Ошибка загрузки заказов");
@@ -293,11 +305,10 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    setAdminAuthenticated(false);
+    clearAdminToken();
     navigate("/admin/login");
   };
 
-  // ETA helper
   const formatEta = (progress: UploadProgress): string => {
     if (progress.processed === 0) return "расчёт...";
     const elapsed = Date.now() - progress.startedAt;
@@ -327,6 +338,9 @@ export default function AdminDashboard() {
             <h1 className="text-xl font-display font-semibold">Админ-панель</h1>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPrintSizesOpen(true)}>
+              <Settings className="w-4 h-4 mr-1" /> Размеры
+            </Button>
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
@@ -376,7 +390,6 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container py-6">
-        {/* Upload progress bar */}
         {uploadProgress && (
           <div className="mb-6 p-4 rounded-lg bg-card shadow-card space-y-2">
             <div className="flex items-center justify-between">
@@ -548,6 +561,11 @@ export default function AdminDashboard() {
             if (!open) setManagePhotosEvent(null);
           }}
           onChanged={loadEvents}
+        />
+
+        <PrintSizesManagerDialog
+          open={printSizesOpen}
+          onOpenChange={setPrintSizesOpen}
         />
 
         {/* Cancel upload confirmation */}
