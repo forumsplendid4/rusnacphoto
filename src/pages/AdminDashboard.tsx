@@ -159,7 +159,7 @@ export default function AdminDashboard() {
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm("Удалить мероприятие и все его фото?")) return;
-    const { error } = await supabase.rpc("admin_delete_event", {
+    const { error } = await (supabase.rpc as any)("admin_delete_event", {
       p_event_id: eventId,
     });
     if (error) {
