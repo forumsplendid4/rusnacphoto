@@ -349,45 +349,21 @@ export default function AdminDashboard() {
         quantity: number;
       }[];
 
-      // 2. Collect unique file paths (prefer originals, fallback to previews)
-      const pathMap = new Map<string, string>(); // storage_path -> bucket_path
+      // 2. Collect unique file paths (previews only)
+      const uniquePaths = new Set<string>();
       for (const item of items) {
-        const key = item.original_storage_path || item.storage_path;
-        const bucket = item.original_storage_path ? "event-originals" : "event-photos";
-        pathMap.set(key, bucket);
+        uniquePaths.add(item.storage_path);
       }
 
-      const allPaths = Array.from(pathMap.keys());
+      const allPaths = Array.from(uniquePaths);
       setZipProgress({ status: "Получение ссылок на файлы...", current: 0, total: allPaths.length });
 
-      // 3. Get signed URLs via edge function for originals, public URLs for previews
-      const originalPaths = allPaths.filter((p) => pathMap.get(p) === "event-originals");
-      const previewPaths = allPaths.filter((p) => pathMap.get(p) === "event-photos");
-
-      const signedUrls: Record<string, string> = {};
-
-      // Get signed URLs for originals via edge function
-      if (originalPaths.length > 0) {
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/sign-original-urls`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ admin_token: token, paths: originalPaths }),
-          }
-        );
-        const result = await response.json();
-        if (result.signed_urls) {
-          Object.assign(signedUrls, result.signed_urls);
-        }
-      }
-
-      // Get public URLs for previews (fallback)
-      for (const path of previewPaths) {
+      // 3. Get public URLs for previews
+      const fileUrls: Record<string, string> = {};
+      for (const path of allPaths) {
         const { data } = supabase.storage.from("event-photos").getPublicUrl(path);
         if (data?.publicUrl) {
-          signedUrls[path] = data.publicUrl;
+          fileUrls[path] = data.publicUrl;
         }
       }
 
@@ -403,7 +379,7 @@ export default function AdminDashboard() {
         const batch = allPaths.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(
           batch.map(async (path) => {
-            const url = signedUrls[path];
+            const url = fileUrls[path];
             if (!url) return;
             const resp = await fetch(url);
             if (resp.ok) {
@@ -428,7 +404,7 @@ export default function AdminDashboard() {
       const folderFileCount = new Map<string, Map<string, number>>();
 
       for (const item of items) {
-        const filePath = item.original_storage_path || item.storage_path;
+        const filePath = item.storage_path;
         const blob = downloadedFiles.get(filePath);
         if (!blob) { processed++; continue; }
 
