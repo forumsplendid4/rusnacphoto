@@ -51,7 +51,7 @@ export default function EventPage() {
         ? { width: 1800, quality: 84 }
         : mode === "cart"
           ? { width: 320, quality: 60 }
-          : { width: 600, quality: 65 };
+          : { width: 900, quality: 68 };
 
     const { data } = supabase.storage.from("event-photos").getPublicUrl(storagePath, { transform });
     return data.publicUrl;
