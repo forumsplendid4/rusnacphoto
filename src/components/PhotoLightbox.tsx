@@ -72,19 +72,20 @@ export default function PhotoLightbox({
           )}
 
           {/* Image */}
-          <motion.img
-            key={photoUrl}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            src={photoUrl}
-            alt=""
-            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg select-none"
-            onClick={(e) => e.stopPropagation()}
-            onContextMenu={(e) => e.preventDefault()}
-            draggable={false}
-          />
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <motion.img
+              key={photoUrl}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              src={photoUrl}
+              alt=""
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg select-none pointer-events-none"
+              draggable={false}
+            />
+            <div className="absolute inset-0" onContextMenu={(e) => e.preventDefault()} />
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

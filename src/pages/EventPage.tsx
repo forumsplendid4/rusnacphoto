@@ -51,7 +51,7 @@ export default function EventPage() {
         ? { width: 1800, quality: 84 }
         : mode === "cart"
           ? { width: 320, quality: 60 }
-          : { width: 900, quality: 68 };
+          : { width: 600, quality: 65 };
 
     const { data } = supabase.storage.from("event-photos").getPublicUrl(storagePath, { transform });
     return data.publicUrl;
@@ -196,7 +196,7 @@ export default function EventPage() {
         {photos.length === 0 ? (
           <p className="text-center text-muted-foreground py-16">{t.event.notUploaded}</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {photos.map((photo, index) => (
               <PhotoCard
                 key={photo.id}

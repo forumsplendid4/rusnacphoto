@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { setAdminAuthenticated } from "@/lib/admin-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Camera } from "lucide-react";
+import { Lock, Camera, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminLogin() {
@@ -42,7 +42,13 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 relative">
+      <Link
+        to="/"
+        className="absolute top-4 left-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Назад
+      </Link>
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
           <Camera className="w-12 h-12 mx-auto text-primary mb-4" />
