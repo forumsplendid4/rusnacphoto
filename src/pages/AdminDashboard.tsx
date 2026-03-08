@@ -38,10 +38,13 @@ import {
   Images,
   X,
   Settings,
+  Printer,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { applyWatermark } from "@/lib/watermark";
+import JSZip from "jszip";
+import { applyWatermark, compressOriginal } from "@/lib/watermark";
 import EventPhotosManagerDialog from "@/components/admin/EventPhotosManagerDialog";
 import PrintSizesManagerDialog from "@/components/admin/PrintSizesManagerDialog";
 
@@ -66,6 +69,12 @@ interface UploadProgress {
   eventId: string;
 }
 
+interface ZipProgress {
+  status: string;
+  current: number;
+  total: number;
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
@@ -73,7 +82,6 @@ export default function AdminDashboard() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
-  const [newWatermark, setNewWatermark] = useState("PREVIEW");
   const [creating, setCreating] = useState(false);
   const [printSizesOpen, setPrintSizesOpen] = useState(false);
 
@@ -85,6 +93,8 @@ export default function AdminDashboard() {
   const [viewOrdersEventId, setViewOrdersEventId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const [zipProgress, setZipProgress] = useState<ZipProgress | null>(null);
 
   const token = getAdminToken();
 
@@ -143,13 +153,11 @@ export default function AdminDashboard() {
         p_title: newTitle.trim(),
         p_slug: generateSlug(newTitle.trim()),
         p_description: newDescription.trim() || null,
-        p_watermark_text: newWatermark.trim() || "PREVIEW",
       });
       if (error) throw error;
       toast.success("Мероприятие создано");
       setNewTitle("");
       setNewDescription("");
-      setNewWatermark("PREVIEW");
       setCreateOpen(false);
       loadEvents();
     } catch (err) {
@@ -176,8 +184,6 @@ export default function AdminDashboard() {
   };
 
   const handleUploadPhotos = async (eventId: string, files: FileList) => {
-    const event = events.find((e) => e.id === eventId);
-    const watermarkText = event?.watermark_text || "PREVIEW";
     const fileArray = Array.from(files);
 
     cancelRef.current = false;
@@ -203,24 +209,34 @@ export default function AdminDashboard() {
         const file = fileArray[currentIndex];
 
         try {
-          const watermarkedBlob = await applyWatermark(file, watermarkText);
+          // Create watermarked preview and compressed original in parallel
+          const [watermarkedBlob, originalBlob] = await Promise.all([
+            applyWatermark(file),
+            compressOriginal(file),
+          ]);
           if (cancelRef.current) break;
 
-          const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
-          const { error: uploadError } = await supabase.storage
-            .from("event-photos")
-            .upload(path, watermarkedBlob, { contentType: "image/jpeg" });
+          const baseName = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+          const previewPath = `${eventId}/${baseName}.jpeg`;
+          const originalPath = `${eventId}/${baseName}-original.jpeg`;
+
+          // Upload both in parallel
+          const [previewResult, originalResult] = await Promise.all([
+            supabase.storage.from("event-photos").upload(previewPath, watermarkedBlob, { contentType: "image/jpeg" }),
+            supabase.storage.from("event-originals").upload(originalPath, originalBlob, { contentType: "image/jpeg" }),
+          ]);
 
           if (cancelRef.current) break;
 
-          if (uploadError) {
+          if (previewResult.error) {
             failedCount++;
           } else {
             const { error: dbError } = await callRpc("admin_add_photo", {
               p_admin_token: token,
               p_event_id: eventId,
-              p_storage_path: path,
+              p_storage_path: previewPath,
               p_filename: file.name,
+              p_original_storage_path: originalResult.error ? null : originalPath,
             });
             if (dbError) failedCount++;
             else successCount++;
@@ -304,6 +320,142 @@ export default function AdminDashboard() {
     XLSX.writeFile(wb, `${eventTitle}_заказы.xlsx`);
   };
 
+  const handlePrepareForPrint = async (eventId: string, eventTitle: string) => {
+    setZipProgress({ status: "Загрузка заказов...", current: 0, total: 0 });
+
+    try {
+      // 1. Get orders for print
+      const { data: orderData, error: orderError } = await callRpc("admin_get_orders_for_print", {
+        p_admin_token: token,
+        p_event_id: eventId,
+      });
+
+      if (orderError || !orderData || (orderData as any[]).length === 0) {
+        toast.error("Нет заказов для подготовки");
+        setZipProgress(null);
+        return;
+      }
+
+      const items = orderData as {
+        customer_name: string;
+        photo_filename: string;
+        original_storage_path: string | null;
+        storage_path: string;
+        print_size_name: string;
+        quantity: number;
+      }[];
+
+      // 2. Collect unique file paths (prefer originals, fallback to previews)
+      const pathMap = new Map<string, string>(); // storage_path -> bucket_path
+      for (const item of items) {
+        const key = item.original_storage_path || item.storage_path;
+        const bucket = item.original_storage_path ? "event-originals" : "event-photos";
+        pathMap.set(key, bucket);
+      }
+
+      const allPaths = Array.from(pathMap.keys());
+      setZipProgress({ status: "Получение ссылок на файлы...", current: 0, total: allPaths.length });
+
+      // 3. Get signed URLs via edge function for originals, public URLs for previews
+      const originalPaths = allPaths.filter((p) => pathMap.get(p) === "event-originals");
+      const previewPaths = allPaths.filter((p) => pathMap.get(p) === "event-photos");
+
+      const signedUrls: Record<string, string> = {};
+
+      // Get signed URLs for originals via edge function
+      if (originalPaths.length > 0) {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const response = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/sign-original-urls`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ admin_token: token, paths: originalPaths }),
+          }
+        );
+        const result = await response.json();
+        if (result.signed_urls) {
+          Object.assign(signedUrls, result.signed_urls);
+        }
+      }
+
+      // Get public URLs for previews (fallback)
+      for (const path of previewPaths) {
+        const { data } = supabase.storage.from("event-photos").getPublicUrl(path);
+        if (data?.publicUrl) {
+          signedUrls[path] = data.publicUrl;
+        }
+      }
+
+      // 4. Download files and build ZIP
+      const zip = new JSZip();
+      const downloadedFiles = new Map<string, Blob>();
+      let downloaded = 0;
+
+      setZipProgress({ status: "Скачивание фото...", current: 0, total: allPaths.length });
+
+      // Download unique files
+      for (const path of allPaths) {
+        const url = signedUrls[path];
+        if (!url) continue;
+        try {
+          const resp = await fetch(url);
+          if (resp.ok) {
+            downloadedFiles.set(path, await resp.blob());
+          }
+        } catch (e) {
+          console.error("Download error:", path, e);
+        }
+        downloaded++;
+        setZipProgress({ status: "Скачивание фото...", current: downloaded, total: allPaths.length });
+      }
+
+      // 5. Build archive structure
+      setZipProgress({ status: "Формирование архива...", current: 0, total: items.length });
+
+      const FLAT_SIZE = "10x15";
+      let processed = 0;
+
+      for (const item of items) {
+        const filePath = item.original_storage_path || item.storage_path;
+        const blob = downloadedFiles.get(filePath);
+        if (!blob) { processed++; continue; }
+
+        const ext = item.photo_filename.includes(".") ? "" : ".jpeg";
+        const safeName = item.photo_filename.replace(/[/\\:*?"<>|]/g, "_") + ext;
+
+        if (item.print_size_name === FLAT_SIZE) {
+          // Flat folder for 10x15
+          zip.file(`${FLAT_SIZE}/${safeName}`, blob);
+        } else {
+          // Nested: {Size}/{CustomerName}/{filename}
+          const safeCustomer = item.customer_name.replace(/[/\\:*?"<>|]/g, "_");
+          zip.file(`${item.print_size_name}/${safeCustomer}/${safeName}`, blob);
+        }
+
+        processed++;
+        setZipProgress({ status: "Формирование архива...", current: processed, total: items.length });
+      }
+
+      // 6. Generate and download
+      setZipProgress({ status: "Сжатие архива...", current: 0, total: 0 });
+      const content = await zip.generateAsync({ type: "blob" });
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(content);
+      link.download = `${eventTitle}_печать.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+      toast.success("Архив готов к печати!");
+    } catch (err) {
+      console.error("Prepare for print error:", err);
+      toast.error("Ошибка при подготовке архива");
+    } finally {
+      setZipProgress(null);
+    }
+  };
+
   const handleLogout = () => {
     clearAdminToken();
     navigate("/admin/login");
@@ -368,14 +520,6 @@ export default function AdminDashboard() {
                       placeholder="Дополнительная информация..."
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Текст водяного знака</Label>
-                    <Input
-                      value={newWatermark}
-                      onChange={(e) => setNewWatermark(e.target.value)}
-                      placeholder="PREVIEW"
-                    />
-                  </div>
                   <Button onClick={handleCreate} disabled={creating || !newTitle.trim()} className="w-full">
                     {creating ? "Создание..." : "Создать"}
                   </Button>
@@ -411,6 +555,23 @@ export default function AdminDashboard() {
               </div>
             </div>
             <Progress value={uploadProgress.total > 0 ? (uploadProgress.processed / uploadProgress.total) * 100 : 0} />
+          </div>
+        )}
+
+        {zipProgress && (
+          <div className="mb-6 p-4 rounded-lg bg-card shadow-card space-y-2">
+            <div className="flex items-center gap-2">
+              <Download className="w-4 h-4 animate-pulse text-primary" />
+              <span className="text-sm font-medium">{zipProgress.status}</span>
+              {zipProgress.total > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {zipProgress.current} / {zipProgress.total}
+                </span>
+              )}
+            </div>
+            {zipProgress.total > 0 && (
+              <Progress value={(zipProgress.current / zipProgress.total) * 100} />
+            )}
           </div>
         )}
 
@@ -489,6 +650,15 @@ export default function AdminDashboard() {
 
                   <Button variant="outline" size="sm" onClick={() => handleViewOrders(event.id)}>
                     <Eye className="w-4 h-4 mr-1" /> Заказы
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePrepareForPrint(event.id, event.title)}
+                    disabled={!!zipProgress || (event.order_count || 0) === 0}
+                  >
+                    <Printer className="w-4 h-4 mr-1" /> Печать
                   </Button>
 
                   <Button variant="outline" size="sm" onClick={() => setManagePhotosEvent(event)}>
