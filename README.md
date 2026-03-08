@@ -1,73 +1,73 @@
-# Welcome to your Lovable project
+# RusnacPhoto — Платформа заказа печати фотографий с мероприятий
 
-## Project info
+Веб-приложение для фотографов: клиенты просматривают фотографии с мероприятия, выбирают размер печати и отправляют заказ. Администратор управляет мероприятиями, загружает фото с водяными знаками и обрабатывает заказы.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Стек технологий
 
-## How can I edit this code?
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend**: Lovable Cloud (Supabase) — база данных, хранилище файлов, серверные функции (RPC)
+- **Локализация**: Румынский (RO) и Русский (RU)
 
-There are several ways of editing your application.
+## Основные возможности
 
-**Use Lovable**
+### Для клиентов
+- Просмотр фотографий мероприятия по ссылке
+- Выбор размера печати и количества
+- Корзина с подсчётом итоговой суммы
+- Отправка заказа с указанием ФИО и телефона
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Для администратора
+- Создание/удаление мероприятий
+- Загрузка фото с автоматическим наложением водяного знака
+- Управление размерами печати и ценами (глобально для всех мероприятий)
+- Просмотр заказов, экспорт в Excel
+- Активация/деактивация мероприятий
 
-Changes made via Lovable will be committed automatically to this repo.
+## Архитектура безопасности
 
-**Use your preferred IDE**
+- Админские RPC-функции требуют передачи `p_admin_token` — пароля, который проверяется на стороне базы данных через `verify_admin_token()`
+- Все админские функции выполняются с `SECURITY DEFINER` и проверяют токен перед выполнением
+- Хранилище фото: публичное чтение, загрузка/удаление только через `service_role`
+- RLS-политики блокируют прямой доступ к таблицам `orders`, `order_items`, `app_settings`
+- Пароль администратора хранится в таблице `app_settings` (не в коде)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Структура базы данных
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+| Таблица | Описание |
+|---------|----------|
+| `app_settings` | Настройки (включая пароль админа) |
+| `events` | Мероприятия |
+| `photos` | Фотографии, привязанные к мероприятиям |
+| `print_sizes` | Размеры печати с ценами |
+| `orders` | Заказы клиентов |
+| `order_items` | Позиции заказа (фото + размер + количество) |
 
-Follow these steps:
+## Настройка пароля администратора
+
+Пароль хранится в таблице `app_settings` с ключом `admin_password`. Для смены пароля обновите значение в базе данных:
+
+```sql
+UPDATE app_settings SET value = 'ваш_новый_пароль' WHERE key = 'admin_password';
+```
+
+## Локальная разработка
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Деплой
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Откройте проект в [Lovable](https://lovable.dev) → Share → Publish.
 
-**Use GitHub Codespaces**
+## Маршруты
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| Путь | Описание |
+|------|----------|
+| `/` | Главная — список активных мероприятий |
+| `/event/:slug` | Страница мероприятия с фото и корзиной |
+| `/admin/login` | Вход в админ-панель |
+| `/admin` | Панель управления мероприятиями |
