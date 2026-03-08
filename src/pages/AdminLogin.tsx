@@ -21,7 +21,7 @@ export default function AdminLogin() {
       // We need to verify password server-side ideally, but for simple password approach
       // we'll use a Supabase RPC or direct check. Since app_settings has RLS blocking reads,
       // we use an edge function or RPC. For now, let's create a simple check via RPC.
-      const { data, error } = await supabase.rpc("verify_admin_password", {
+      const { data, error } = await (supabase.rpc as any)("verify_admin_password", {
         input_password: password,
       });
 
