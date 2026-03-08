@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/contexts/LocaleContext";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ export default function PhotoCard({
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const { t } = useLocale();
 
   const handleAdd = () => {
     if (!selectedSize) return;
@@ -52,10 +54,7 @@ export default function PhotoCard({
       transition={{ duration: 0.3 }}
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
-      <div
-        className="relative aspect-[4/3] overflow-hidden cursor-pointer"
-        onClick={onPhotoClick}
-      >
+      <div className="relative aspect-[4/3] overflow-hidden cursor-pointer" onClick={onPhotoClick}>
         <img
           src={photoUrl}
           alt={filename}
@@ -69,7 +68,7 @@ export default function PhotoCard({
         <div className="flex gap-2">
           <Select value={selectedSize} onValueChange={setSelectedSize}>
             <SelectTrigger className="flex-1 h-9 text-sm">
-              <SelectValue placeholder="Размер" />
+              <SelectValue placeholder={t.photoCard.sizePlaceholder} />
             </SelectTrigger>
             <SelectContent>
               {printSizes.map((size) => (
@@ -79,10 +78,7 @@ export default function PhotoCard({
               ))}
             </SelectContent>
           </Select>
-          <Select
-            value={String(quantity)}
-            onValueChange={(v) => setQuantity(Number(v))}
-          >
+          <Select value={String(quantity)} onValueChange={(v) => setQuantity(Number(v))}>
             <SelectTrigger className="w-16 h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -95,19 +91,14 @@ export default function PhotoCard({
             </SelectContent>
           </Select>
         </div>
-        <Button
-          onClick={handleAdd}
-          disabled={!selectedSize}
-          className="w-full h-9 text-sm"
-          variant={added ? "secondary" : "default"}
-        >
+        <Button onClick={handleAdd} disabled={!selectedSize} className="w-full h-9 text-sm" variant={added ? "secondary" : "default"}>
           {added ? (
             <>
-              <Check className="w-4 h-4 mr-1" /> Добавлено
+              <Check className="w-4 h-4 mr-1" /> {t.photoCard.added}
             </>
           ) : (
             <>
-              <Plus className="w-4 h-4 mr-1" /> В корзину
+              <Plus className="w-4 h-4 mr-1" /> {t.photoCard.addToCart}
             </>
           )}
         </Button>

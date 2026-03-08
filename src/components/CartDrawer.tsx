@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ShoppingCart, Trash2, Minus, Plus, Send } from "lucide-react";
 import { CartItem, updateCartQuantity, removeFromCart } from "@/lib/cart";
 import { supabase } from "@/integrations/supabase/client";
+import { useLocale } from "@/contexts/LocaleContext";
 import { toast } from "sonner";
 
 interface CartDrawerProps {
@@ -20,18 +21,21 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { locale, t } = useLocale();
 
   const handleQuantityChange = (photoId: string, printSizeId: string, delta: number) => {
     const item = items.find((i) => i.photoId === photoId && i.printSizeId === printSizeId);
     if (!item) return;
+
     const newQty = item.quantity + delta;
     if (newQty < 1) {
       const updated = removeFromCart(eventId, photoId, printSizeId);
       onCartUpdate(updated);
-    } else {
-      const updated = updateCartQuantity(eventId, photoId, printSizeId, newQty);
-      onCartUpdate(updated);
+      return;
     }
+
+    const updated = updateCartQuantity(eventId, photoId, printSizeId, newQty);
+    onCartUpdate(updated);
   };
 
   const handleRemove = (photoId: string, printSizeId: string) => {
@@ -41,46 +45,49 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
 
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim()) {
-      toast.error("Заполните имя и телефон");
+      toast.error(t.cart.fillNameAndPhone);
       return;
     }
+
     if (items.length === 0) {
-      toast.error("Корзина пуста");
+      toast.error(t.cart.empty);
       return;
     }
 
     setSubmitting(true);
     try {
-      const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          event_id: eventId,
-          customer_name: name.trim(),
-          customer_phone: phone.trim(),
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
+      const payload = items.map((item) => ({
         photo_id: item.photoId,
         print_size_id: item.printSizeId,
         quantity: item.quantity,
       }));
 
-      const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
-      if (itemsError) throw itemsError;
+      const { error } = await (supabase.rpc as any)("create_order_with_items", {
+        p_event_id: eventId,
+        p_customer_name: name.trim(),
+        p_customer_phone: phone.trim(),
+        p_items: payload,
+      });
 
-      toast.success("Заказ отправлен! Спасибо!");
+      if (error) throw error;
+
+      toast.success(t.cart.success);
       onOrderPlaced();
       setName("");
       setPhone("");
       setOpen(false);
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("invalid_order_items")) {
+        toast.error(
+          locale === "ro"
+            ? "Unele poze/mărimi nu mai sunt disponibile. Reîncarcă pagina și încearcă din nou."
+            : "Некоторые фото/размеры больше недоступны. Обновите страницу и попробуйте снова.",
+        );
+      } else {
+        toast.error(t.cart.error);
+      }
       console.error(err);
-      toast.error("Ошибка при отправке заказа");
     } finally {
       setSubmitting(false);
     }
@@ -91,28 +98,21 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
       <SheetTrigger asChild>
         <Button className="fixed bottom-6 right-6 h-14 px-6 rounded-full shadow-elevated z-50" size="lg">
           <ShoppingCart className="w-5 h-5 mr-2" />
-          Корзина ({items.reduce((s, i) => s + i.quantity, 0)})
+          {t.cart.title} ({items.reduce((s, i) => s + i.quantity, 0)})
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-md flex flex-col">
         <SheetHeader>
-          <SheetTitle className="font-display text-xl">Ваш заказ</SheetTitle>
+          <SheetTitle className="font-display text-xl">{t.cart.yourOrder}</SheetTitle>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto py-4 space-y-3">
           {items.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Корзина пуста</p>
+            <p className="text-muted-foreground text-center py-8">{t.cart.empty}</p>
           ) : (
             items.map((item) => (
-              <div
-                key={`${item.photoId}-${item.printSizeId}`}
-                className="flex gap-3 p-3 rounded-lg bg-secondary/50"
-              >
-                <img
-                  src={item.photoUrl}
-                  alt={item.filename}
-                  className="w-16 h-16 rounded object-cover"
-                />
+              <div key={`${item.photoId}-${item.printSizeId}`} className="flex gap-3 p-3 rounded-lg bg-secondary/50">
+                <img src={item.photoUrl} alt={item.filename} className="w-16 h-16 rounded object-cover" loading="lazy" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.filename}</p>
                   <p className="text-xs text-muted-foreground">{item.printSizeName}</p>
@@ -120,6 +120,7 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
                     <button
                       onClick={() => handleQuantityChange(item.photoId, item.printSizeId, -1)}
                       className="w-6 h-6 rounded bg-muted flex items-center justify-center hover:bg-border transition-colors"
+                      aria-label="decrease"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
@@ -127,6 +128,7 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
                     <button
                       onClick={() => handleQuantityChange(item.photoId, item.printSizeId, 1)}
                       className="w-6 h-6 rounded bg-muted flex items-center justify-center hover:bg-border transition-colors"
+                      aria-label="increase"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
@@ -135,6 +137,7 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
                 <button
                   onClick={() => handleRemove(item.photoId, item.printSizeId)}
                   className="text-muted-foreground hover:text-destructive transition-colors self-start"
+                  aria-label="remove"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -146,26 +149,16 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
         {items.length > 0 && (
           <div className="border-t pt-4 space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="name">Фамилия и Имя</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Иванов Иван"
-              />
+              <Label htmlFor="name">{t.cart.nameLabel}</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.cart.namePlaceholder} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Телефон</Label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+7 (999) 123-45-67"
-              />
+              <Label htmlFor="phone">{t.cart.phoneLabel}</Label>
+              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t.cart.phonePlaceholder} />
             </div>
             <Button onClick={handleSubmit} disabled={submitting} className="w-full">
               <Send className="w-4 h-4 mr-2" />
-              {submitting ? "Отправка..." : "Отправить заказ"}
+              {submitting ? t.cart.submitting : t.cart.submit}
             </Button>
           </div>
         )}
