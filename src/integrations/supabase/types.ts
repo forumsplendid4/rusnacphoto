@@ -31,6 +31,7 @@ export type Database = {
       }
       events: {
         Row: {
+          access_key: string
           created_at: string
           description: string | null
           id: string
@@ -40,6 +41,7 @@ export type Database = {
           watermark_text: string
         }
         Insert: {
+          access_key?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -49,6 +51,7 @@ export type Database = {
           watermark_text?: string
         }
         Update: {
+          access_key?: string
           created_at?: string
           description?: string | null
           id?: string
