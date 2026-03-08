@@ -225,26 +225,17 @@ export type Database = {
             }
             Returns: undefined
           }
-      admin_create_event:
-        | {
-            Args: {
-              p_admin_token: string
-              p_description?: string
-              p_slug: string
-              p_title: string
-              p_watermark_text?: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_description?: string
-              p_slug: string
-              p_title: string
-              p_watermark_text?: string
-            }
-            Returns: undefined
-          }
+      admin_create_event: {
+        Args: {
+          p_access_key?: string
+          p_admin_token: string
+          p_description?: string
+          p_slug: string
+          p_title: string
+          p_watermark_text?: string
+        }
+        Returns: undefined
+      }
       admin_create_print_size: {
         Args: { p_admin_token: string; p_name: string; p_price?: number }
         Returns: undefined
@@ -265,35 +256,21 @@ export type Database = {
         Args: { p_admin_token: string; p_id: string }
         Returns: undefined
       }
-      admin_get_events:
-        | {
-            Args: never
-            Returns: {
-              created_at: string
-              description: string
-              id: string
-              is_active: boolean
-              order_count: number
-              photo_count: number
-              slug: string
-              title: string
-              watermark_text: string
-            }[]
-          }
-        | {
-            Args: { p_admin_token?: string }
-            Returns: {
-              created_at: string
-              description: string
-              id: string
-              is_active: boolean
-              order_count: number
-              photo_count: number
-              slug: string
-              title: string
-              watermark_text: string
-            }[]
-          }
+      admin_get_events: {
+        Args: { p_admin_token?: string }
+        Returns: {
+          access_key: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          order_count: number
+          photo_count: number
+          slug: string
+          title: string
+          watermark_text: string
+        }[]
+      }
       admin_get_orders:
         | {
             Args: { p_admin_token: string; p_event_id: string }
@@ -358,6 +335,15 @@ export type Database = {
           p_items: Json
         }
         Returns: string
+      }
+      find_event_by_key: {
+        Args: { p_key: string }
+        Returns: {
+          description: string
+          id: string
+          slug: string
+          title: string
+        }[]
       }
       verify_admin_password: {
         Args: { input_password: string }
