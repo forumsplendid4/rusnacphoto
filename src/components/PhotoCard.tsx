@@ -61,7 +61,7 @@ export default function PhotoCard({
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
       <div
-        className="relative cursor-pointer bg-muted/30 h-56"
+        className="relative cursor-pointer bg-muted/30 aspect-[4/3]"
         onClick={onPhotoClick}
       >
         <img
