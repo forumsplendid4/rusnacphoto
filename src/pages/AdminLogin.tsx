@@ -28,7 +28,7 @@ export default function AdminLogin() {
       if (error) throw error;
 
       if (data) {
-        setAdminAuthenticated(true);
+        setAdminToken(password);
         navigate("/admin");
       } else {
         toast.error("Неверный пароль");

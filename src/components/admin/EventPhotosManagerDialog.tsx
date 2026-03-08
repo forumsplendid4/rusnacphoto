@@ -89,7 +89,7 @@ export default function EventPhotosManagerDialog({
 
     setDeleting(true);
     const results = await Promise.allSettled(
-      selectedIds.map((photoId) => (supabase.rpc as any)("admin_delete_photo", { p_photo_id: photoId })),
+      selectedIds.map((photoId) => callRpc("admin_delete_photo", { p_admin_token: getAdminToken(), p_photo_id: photoId })),
     );
 
     const failed = results.filter(
