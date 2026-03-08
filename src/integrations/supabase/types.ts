@@ -218,6 +218,7 @@ export type Database = {
         Returns: undefined
       }
       admin_delete_event: { Args: { p_event_id: string }; Returns: undefined }
+      admin_delete_photo: { Args: { p_photo_id: string }; Returns: undefined }
       admin_get_events: {
         Args: never
         Returns: {
@@ -246,6 +247,15 @@ export type Database = {
       admin_toggle_event: {
         Args: { p_active: boolean; p_event_id: string }
         Returns: undefined
+      }
+      create_order_with_items: {
+        Args: {
+          p_customer_name: string
+          p_customer_phone: string
+          p_event_id: string
+          p_items: Json
+        }
+        Returns: string
       }
       verify_admin_password: {
         Args: { input_password: string }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { isAdminAuthenticated, setAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,12 @@ import {
   FileSpreadsheet,
   Eye,
   ExternalLink,
+  Images,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { applyWatermark } from "@/lib/watermark";
-
+import EventPhotosManagerDialog from "@/components/admin/EventPhotosManagerDialog";
 interface Event {
   id: string;
   title: string;
@@ -53,6 +54,7 @@ export default function AdminDashboard() {
   // Photo upload state
   const [uploadEventId, setUploadEventId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [managePhotosEvent, setManagePhotosEvent] = useState<Event | null>(null);
 
   // Orders view
   const [viewOrdersEventId, setViewOrdersEventId] = useState<string | null>(null);
@@ -131,35 +133,44 @@ export default function AdminDashboard() {
     setUploading(true);
     const event = events.find((e) => e.id === eventId);
     const watermarkText = event?.watermark_text || "PREVIEW";
-    let count = 0;
-    for (const file of Array.from(files)) {
-      try {
-        // Embed watermark into the image
-        const watermarkedBlob = await applyWatermark(file, watermarkText);
-        const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("event-photos")
-          .upload(path, watermarkedBlob, { contentType: "image/jpeg" });
+    const fileArray = Array.from(files);
+    const workersCount = Math.min(4, fileArray.length);
+    let pointer = 0;
+    let successCount = 0;
 
-        if (uploadError) {
-          console.error(uploadError);
-          continue;
+    const worker = async () => {
+      while (pointer < fileArray.length) {
+        const currentIndex = pointer;
+        pointer += 1;
+        const file = fileArray[currentIndex];
+
+        try {
+          const watermarkedBlob = await applyWatermark(file, watermarkText);
+          const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("event-photos")
+            .upload(path, watermarkedBlob, { contentType: "image/jpeg" });
+
+          if (uploadError) continue;
+
+          const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
+            p_event_id: eventId,
+            p_storage_path: path,
+            p_filename: file.name,
+          });
+
+          if (!dbError) successCount++;
+        } catch (err) {
+          console.error("Upload/Watermark error:", err);
         }
-
-        const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
-          p_event_id: eventId,
-          p_storage_path: path,
-          p_filename: file.name,
-        });
-
-        if (dbError) console.error(dbError);
-        else count++;
-      } catch (err) {
-        console.error("Watermark error:", err);
       }
-    }
-    toast.success(`Загружено ${count} фото`);
+    };
+
+    await Promise.all(Array.from({ length: workersCount }, worker));
+
+    toast.success(`Загружено ${successCount} из ${fileArray.length} фото`);
     setUploading(false);
     setUploadEventId(null);
     loadEvents();
@@ -171,7 +182,8 @@ export default function AdminDashboard() {
       p_event_id: eventId,
     });
     if (error) {
-      toast.error("Ошибка удаления");
+      console.error(error);
+      toast.error(`Ошибка удаления: ${error.message || "неизвестно"}`);
       return;
     }
     toast.success("Мероприятие удалено");
@@ -365,6 +377,10 @@ export default function AdminDashboard() {
                     <Eye className="w-4 h-4 mr-1" /> Заказы
                   </Button>
 
+                  <Button variant="outline" size="sm" onClick={() => setManagePhotosEvent(event)}>
+                    <Images className="w-4 h-4 mr-1" /> Управлять фото
+                  </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -423,6 +439,16 @@ export default function AdminDashboard() {
             )}
           </DialogContent>
         </Dialog>
+
+        <EventPhotosManagerDialog
+          open={!!managePhotosEvent}
+          eventId={managePhotosEvent?.id || null}
+          eventTitle={managePhotosEvent?.title}
+          onOpenChange={(open) => {
+            if (!open) setManagePhotosEvent(null);
+          }}
+          onChanged={loadEvents}
+        />
       </main>
     </div>
   );
