@@ -54,11 +54,11 @@ export default function PhotoCard({
       transition={{ duration: 0.3 }}
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
-      <div className="relative bg-secondary/40 overflow-hidden cursor-pointer" onClick={onPhotoClick}>
+      <div className="relative aspect-[4/3] overflow-hidden cursor-pointer bg-secondary/40" onClick={onPhotoClick}>
         <img
           src={photoUrl}
           alt={filename}
-          className="w-full h-auto max-h-[70vh] object-contain transition-transform duration-300 group-hover:scale-105 pointer-events-none"
+          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105 pointer-events-none"
           loading="lazy"
           onContextMenu={(e) => e.preventDefault()}
           draggable={false}
