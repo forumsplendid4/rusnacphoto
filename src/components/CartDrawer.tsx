@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShoppingCart, Trash2, Minus, Plus, Send } from "lucide-react";
-import { CartItem, updateCartQuantity, removeFromCart } from "@/lib/cart";
+import { CartItem, updateCartQuantity, removeFromCart, getCartTotal } from "@/lib/cart";
 import { callRpc } from "@/lib/rpc";
 import { useLocale } from "@/contexts/LocaleContext";
 import { toast } from "sonner";
@@ -16,12 +16,18 @@ interface CartDrawerProps {
   onOrderPlaced: () => void;
 }
 
+const PHONE_REGEX = /^[\d\s\-+().]{7,20}$/;
+const NAME_MAX = 100;
+const PHONE_MAX = 20;
+
 export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced }: CartDrawerProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { locale, t } = useLocale();
+
+  const total = getCartTotal(items);
 
   const handleQuantityChange = (photoId: string, printSizeId: string, delta: number) => {
     const item = items.find((i) => i.photoId === photoId && i.printSizeId === printSizeId);
@@ -43,9 +49,32 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
     onCartUpdate(updated);
   };
 
+  const validateForm = (): string | null => {
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+
+    if (!trimmedName) {
+      return locale === "ro" ? "Introduceți numele" : "Введите имя";
+    }
+    if (trimmedName.length < 2) {
+      return locale === "ro" ? "Numele este prea scurt" : "Имя слишком короткое";
+    }
+    if (trimmedName.length > NAME_MAX) {
+      return locale === "ro" ? `Numele nu poate depăși ${NAME_MAX} caractere` : `Имя не может превышать ${NAME_MAX} символов`;
+    }
+    if (!trimmedPhone) {
+      return locale === "ro" ? "Introduceți telefonul" : "Введите телефон";
+    }
+    if (!PHONE_REGEX.test(trimmedPhone)) {
+      return locale === "ro" ? "Formatul telefonului este invalid" : "Неверный формат телефона";
+    }
+    return null;
+  };
+
   const handleSubmit = async () => {
-    if (!name.trim() || !phone.trim()) {
-      toast.error(t.cart.fillNameAndPhone);
+    const validationError = validateForm();
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
@@ -122,6 +151,11 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.filename}</p>
                   <p className="text-xs text-muted-foreground">{item.printSizeName}</p>
+                  {item.printSizePrice > 0 && (
+                    <p className="text-xs font-medium text-primary">
+                      {item.printSizePrice * item.quantity} MDL
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <button
                       onClick={() => handleQuantityChange(item.photoId, item.printSizeId, -1)}
@@ -154,13 +188,32 @@ export default function CartDrawer({ eventId, items, onCartUpdate, onOrderPlaced
 
         {items.length > 0 && (
           <div className="border-t pt-4 space-y-3">
+            {total > 0 && (
+              <div className="flex justify-between items-center text-sm font-semibold">
+                <span>{locale === "ro" ? "Total" : "Итого"}:</span>
+                <span className="text-primary text-lg">{total} MDL</span>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="name">{t.cart.nameLabel}</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.cart.namePlaceholder} />
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value.slice(0, NAME_MAX))}
+                placeholder={t.cart.namePlaceholder}
+                maxLength={NAME_MAX}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">{t.cart.phoneLabel}</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t.cart.phonePlaceholder} />
+              <Input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.slice(0, PHONE_MAX))}
+                placeholder={t.cart.phonePlaceholder}
+                maxLength={PHONE_MAX}
+              />
             </div>
             <Button onClick={handleSubmit} disabled={submitting} className="w-full">
               <Send className="w-4 h-4 mr-2" />
