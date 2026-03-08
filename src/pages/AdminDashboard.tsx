@@ -142,7 +142,7 @@ export default function AdminDashboard() {
         continue;
       }
 
-      const { error: dbError } = await supabase.rpc("admin_add_photo", {
+      const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
         p_event_id: eventId,
         p_storage_path: path,
         p_filename: file.name,
