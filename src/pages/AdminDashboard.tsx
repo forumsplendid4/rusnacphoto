@@ -182,7 +182,8 @@ export default function AdminDashboard() {
       p_event_id: eventId,
     });
     if (error) {
-      toast.error("Ошибка удаления");
+      console.error(error);
+      toast.error(`Ошибка удаления: ${error.message || "неизвестно"}`);
       return;
     }
     toast.success("Мероприятие удалено");
