@@ -173,7 +173,7 @@ export default function AdminDashboard() {
   const handleViewOrders = async (eventId: string) => {
     setViewOrdersEventId(eventId);
     setOrdersLoading(true);
-    const { data, error } = await supabase.rpc("admin_get_orders", {
+    const { data, error } = await (supabase.rpc as any)("admin_get_orders", {
       p_event_id: eventId,
     });
     if (error) {
