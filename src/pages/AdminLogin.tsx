@@ -42,7 +42,13 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 relative">
+      <Link
+        to="/"
+        className="absolute top-4 left-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Назад
+      </Link>
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
           <Camera className="w-12 h-12 mx-auto text-primary mb-4" />
