@@ -49,10 +49,10 @@ export default function EventPage() {
   const buildPhotoUrl = (storagePath: string, mode: PhotoUrlMode = "thumb") => {
     const transform =
       mode === "full"
-        ? { width: 1800, quality: 80 }
+        ? { width: 1800, height: 1800, resize: "contain" as const, quality: 80 }
         : mode === "cart"
           ? { width: 320, quality: 55 }
-          : { width: 480, quality: 60 };
+          : { width: 900, height: 900, resize: "contain" as const, quality: 60 };
 
     const { data } = supabase.storage.from("event-photos").getPublicUrl(storagePath, { transform });
     return data.publicUrl;
