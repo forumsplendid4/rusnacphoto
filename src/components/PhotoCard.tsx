@@ -19,9 +19,9 @@ interface PhotoCardProps {
   photoUrl: string;
   filename: string;
   photoId: string;
-  watermarkText: string;
   printSizes: PrintSize[];
   onAddToCart: (photoId: string, printSizeId: string, printSizeName: string, quantity: number) => void;
+  onPhotoClick: () => void;
 }
 
 export default function PhotoCard({
