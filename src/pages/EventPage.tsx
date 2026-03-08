@@ -127,7 +127,7 @@ export default function EventPage() {
     return map;
   }, [photos]);
 
-  const handleAddToCart = (photoId: string, printSizeId: string, printSizeName: string, quantity: number) => {
+  const handleAddToCart = (photoId: string, printSizeId: string, printSizeName: string, printSizePrice: number, quantity: number) => {
     if (!event) return;
     const photo = photos.find((p) => p.id === photoId);
     if (!photo) return;
@@ -140,6 +140,7 @@ export default function EventPage() {
         filename: photo.filename,
         printSizeId,
         printSizeName,
+        printSizePrice,
       },
       quantity,
     );
