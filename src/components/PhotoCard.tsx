@@ -54,27 +54,15 @@ export default function PhotoCard({
       transition={{ duration: 0.3 }}
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
-      <div
-        className="relative aspect-square overflow-hidden cursor-pointer bg-secondary/20"
-        onClick={onPhotoClick}
-      >
-        <img
-          src={photoUrl}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40 pointer-events-none"
-          loading="lazy"
-          draggable={false}
-        />
+      <div className="relative aspect-[4/3] overflow-hidden cursor-pointer" onClick={onPhotoClick}>
         <img
           src={photoUrl}
           alt={filename}
-          className="relative z-10 w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02] pointer-events-none"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
           onContextMenu={(e) => e.preventDefault()}
           draggable={false}
         />
-        <div className="absolute inset-0 z-20" onContextMenu={(e) => e.preventDefault()} />
       </div>
       <div className="p-3 space-y-2">
         <div className="flex gap-2">
