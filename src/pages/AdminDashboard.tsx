@@ -278,14 +278,26 @@ export default function AdminDashboard() {
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm("Удалить мероприятие и все его фото?")) return;
-    const { error } = await callRpc("admin_delete_event", { p_admin_token: token, p_event_id: eventId });
-    if (error) {
-      console.error(error);
-      toast.error(`Ошибка удаления: ${error.message || "неизвестно"}`);
-      return;
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/admin-delete-event-files`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_token: token, event_id: eventId }),
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Ошибка удаления");
+      }
+      toast.success("Мероприятие и все файлы удалены");
+      loadEvents();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Ошибка удаления: ${err.message || "неизвестно"}`);
     }
-    toast.success("Мероприятие удалено");
-    loadEvents();
   };
 
   const handleViewOrders = async (eventId: string) => {
