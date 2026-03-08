@@ -61,13 +61,13 @@ export default function PhotoCard({
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
       <div
-        className="relative cursor-pointer bg-muted/40 flex items-center justify-center p-2"
+        className="relative cursor-pointer bg-muted/30 h-56"
         onClick={onPhotoClick}
       >
         <img
           src={photoUrl}
           alt={filename}
-          className="block w-full h-auto max-h-80 object-contain"
+          className="w-full h-full object-contain"
           loading="lazy"
           onContextMenu={(e) => e.preventDefault()}
           draggable={false}
