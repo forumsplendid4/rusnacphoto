@@ -60,11 +60,14 @@ export default function PhotoCard({
       transition={{ duration: 0.3 }}
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
-      <div className="relative aspect-[4/3] overflow-hidden cursor-pointer bg-neutral-100 dark:bg-neutral-800" onClick={onPhotoClick}>
+      <div
+        className="relative cursor-pointer bg-muted/40 flex items-center justify-center p-2"
+        onClick={onPhotoClick}
+      >
         <img
           src={photoUrl}
           alt={filename}
-          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+          className="block w-full h-auto max-h-80 object-contain"
           loading="lazy"
           onContextMenu={(e) => e.preventDefault()}
           draggable={false}
