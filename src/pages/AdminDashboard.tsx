@@ -133,35 +133,44 @@ export default function AdminDashboard() {
     setUploading(true);
     const event = events.find((e) => e.id === eventId);
     const watermarkText = event?.watermark_text || "PREVIEW";
-    let count = 0;
-    for (const file of Array.from(files)) {
-      try {
-        // Embed watermark into the image
-        const watermarkedBlob = await applyWatermark(file, watermarkText);
-        const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("event-photos")
-          .upload(path, watermarkedBlob, { contentType: "image/jpeg" });
+    const fileArray = Array.from(files);
+    const workersCount = Math.min(4, fileArray.length);
+    let pointer = 0;
+    let successCount = 0;
 
-        if (uploadError) {
-          console.error(uploadError);
-          continue;
+    const worker = async () => {
+      while (pointer < fileArray.length) {
+        const currentIndex = pointer;
+        pointer += 1;
+        const file = fileArray[currentIndex];
+
+        try {
+          const watermarkedBlob = await applyWatermark(file, watermarkText);
+          const path = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.jpeg`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("event-photos")
+            .upload(path, watermarkedBlob, { contentType: "image/jpeg" });
+
+          if (uploadError) continue;
+
+          const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
+            p_event_id: eventId,
+            p_storage_path: path,
+            p_filename: file.name,
+          });
+
+          if (!dbError) successCount++;
+        } catch (err) {
+          console.error("Upload/Watermark error:", err);
         }
-
-        const { error: dbError } = await (supabase.rpc as any)("admin_add_photo", {
-          p_event_id: eventId,
-          p_storage_path: path,
-          p_filename: file.name,
-        });
-
-        if (dbError) console.error(dbError);
-        else count++;
-      } catch (err) {
-        console.error("Watermark error:", err);
       }
-    }
-    toast.success(`Загружено ${count} фото`);
+    };
+
+    await Promise.all(Array.from({ length: workersCount }, worker));
+
+    toast.success(`Загружено ${successCount} из ${fileArray.length} фото`);
     setUploading(false);
     setUploadEventId(null);
     loadEvents();
