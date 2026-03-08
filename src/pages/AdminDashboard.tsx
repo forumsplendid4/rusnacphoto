@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAdminAuthenticated, setAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +60,18 @@ export default function AdminDashboard() {
   const [viewOrdersEventId, setViewOrdersEventId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const groupedOrders = useMemo(() => {
+    const map = new Map<string, { customer_name: string; customer_phone: string; created_at: string; items: { filename: string; print_size_name: string; quantity: number }[] }>();
+    for (const o of orders) {
+      const key = `${o.customer_name}|${o.customer_phone}|${o.created_at}`;
+      if (!map.has(key)) {
+        map.set(key, { customer_name: o.customer_name, customer_phone: o.customer_phone, created_at: o.created_at, items: [] });
+      }
+      map.get(key)!.items.push({ filename: o.filename, print_size_name: o.print_size_name, quantity: o.quantity });
+    }
+    return Array.from(map.values());
+  }, [orders]);
 
   useEffect(() => {
     if (!isAdminAuthenticated()) {
@@ -421,17 +433,21 @@ export default function AdminDashboard() {
               <p className="text-center py-8 text-muted-foreground">Заказов пока нет</p>
             ) : (
               <div className="space-y-3">
-                {orders.map((o: any, i: number) => (
-                  <div key={i} className="p-3 rounded-lg bg-secondary/50 text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{o.customer_name}</span>
-                      <span className="text-muted-foreground">{o.customer_phone}</span>
+                {groupedOrders.map((group, i) => (
+                  <div key={i} className="p-4 rounded-lg bg-secondary/50 text-sm">
+                    <div className="flex justify-between mb-2">
+                      <span className="font-semibold">{group.customer_name}</span>
+                      <span className="text-muted-foreground">{group.customer_phone}</span>
                     </div>
-                    <p className="text-muted-foreground mt-1">
-                      {o.filename} · {o.print_size_name} · x{o.quantity}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(o.created_at).toLocaleString("ru-RU")}
+                    <div className="space-y-1 ml-2 border-l-2 border-border pl-3">
+                      {group.items.map((item, j) => (
+                        <p key={j} className="text-muted-foreground">
+                          {item.filename} · {item.print_size_name} · x{item.quantity}
+                        </p>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(group.created_at).toLocaleString("ru-RU")}
                     </p>
                   </div>
                 ))}
