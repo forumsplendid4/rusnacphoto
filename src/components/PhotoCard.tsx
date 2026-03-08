@@ -36,7 +36,6 @@ export default function PhotoCard({
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const [isPortrait, setIsPortrait] = useState(false);
   const { t } = useLocale();
 
   const handleAdd = () => {
@@ -55,19 +54,12 @@ export default function PhotoCard({
       transition={{ duration: 0.3 }}
       className="group rounded-lg overflow-hidden bg-card shadow-card hover:shadow-elevated transition-shadow"
     >
-      <div
-        className={`relative ${isPortrait ? "aspect-[3/4]" : "aspect-[4/3]"} overflow-hidden cursor-pointer bg-secondary/40`}
-        onClick={onPhotoClick}
-      >
+      <div className="relative overflow-hidden cursor-pointer" onClick={onPhotoClick}>
         <img
           src={photoUrl}
           alt={filename}
-          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105 pointer-events-none"
+          className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105 pointer-events-none"
           loading="lazy"
-          onLoad={(e) => {
-            const { naturalWidth, naturalHeight } = e.currentTarget;
-            setIsPortrait(naturalHeight > naturalWidth);
-          }}
           onContextMenu={(e) => e.preventDefault()}
           draggable={false}
         />
