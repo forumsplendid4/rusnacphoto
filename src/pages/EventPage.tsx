@@ -85,7 +85,7 @@ export default function EventPage() {
         .order("sort_order"),
       supabase
         .from("print_sizes")
-        .select("id, name")
+        .select("id, name, price")
         .eq("is_active", true)
         .order("sort_order"),
     ]);
