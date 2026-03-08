@@ -28,9 +28,9 @@ export default function PhotoCard({
   photoUrl,
   filename,
   photoId,
-  watermarkText,
   printSizes,
   onAddToCart,
+  onPhotoClick,
 }: PhotoCardProps) {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
