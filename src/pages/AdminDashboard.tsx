@@ -439,9 +439,14 @@ export default function AdminDashboard() {
                       {event.is_active ? "Активно" : "Скрыто"}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Фото: {event.photo_count || 0} · Заказов: {event.order_count || 0}
-                  </p>
+                   <p className="text-sm text-muted-foreground">
+                     Фото: {event.photo_count || 0} · Заказов: {event.order_count || 0}
+                   </p>
+                   {(event as any).access_key && (
+                     <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                       Код доступа: <span className="font-semibold text-foreground select-all">{(event as any).access_key}</span>
+                     </p>
+                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <div className="flex items-center gap-2">

@@ -125,7 +125,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       nameLabel: "Фамилия и Имя",
       namePlaceholder: "Иванов Иван",
       phoneLabel: "Телефон",
-      phonePlaceholder: "+7 (999) 123-45-67",
+      phonePlaceholder: "+37378431345",
       submit: "Отправить заказ",
       submitting: "Отправка...",
       success: "Заказ отправлен! Спасибо!",

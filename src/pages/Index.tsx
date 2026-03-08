@@ -1,37 +1,52 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Camera, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Camera, ArrowRight, Key } from "lucide-react";
 import { motion } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLocale } from "@/contexts/LocaleContext";
-
-interface Event {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-}
+import { callRpc } from "@/lib/rpc";
+import { toast } from "sonner";
 
 export default function Index() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { t } = useLocale();
+  const [accessKey, setAccessKey] = useState("");
+  const [searching, setSearching] = useState(false);
+  const navigate = useNavigate();
+  const { t, locale } = useLocale();
 
-  useEffect(() => {
-    supabase
-      .from("events")
-      .select("id, title, slug, description")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setEvents(data || []);
-        setLoading(false);
-      });
-  }, []);
+  const handleSearch = async () => {
+    const key = accessKey.trim();
+    if (!key) {
+      toast.error(locale === "ro" ? "Introduceți codul de acces" : "Введите код доступа");
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const { data, error } = await callRpc<{ slug: string }[]>("find_event_by_key", { p_key: key });
+      if (error) throw error;
+
+      const results = data as any[];
+      if (!results || results.length === 0) {
+        toast.error(locale === "ro" ? "Evenimentul nu a fost găsit" : "Мероприятие не найдено");
+        return;
+      }
+
+      navigate(`/event/${results[0].slug}`);
+    } catch {
+      toast.error(locale === "ro" ? "Eroare la căutare" : "Ошибка поиска");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <header className="border-b bg-card/80 backdrop-blur-sm">
         <div className="container py-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -40,54 +55,54 @@ export default function Index() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Link
-              to="/admin/login"
+            <a
+              href="/admin/login"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               {t.index.admin}
-            </Link>
+            </a>
           </div>
         </div>
       </header>
 
-      <main className="container py-12">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-display font-semibold mb-3">{t.index.chooseEvent}</h2>
-          <p className="text-muted-foreground max-w-md mx-auto">{t.index.chooseEventDescription}</p>
-        </div>
+      <main className="flex-1 flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-md text-center space-y-6"
+        >
+          <div>
+            <Key className="w-12 h-12 mx-auto text-primary mb-4" />
+            <h2 className="text-3xl font-display font-semibold mb-2">
+              {locale === "ro" ? "Accesează fotografiile" : "Доступ к фотографиям"}
+            </h2>
+            <p className="text-muted-foreground">
+              {locale === "ro"
+                ? "Introduceți codul primit de la fotograf pentru a vedea fotografiile evenimentului"
+                : "Введите код, полученный от фотографа, чтобы увидеть фотографии мероприятия"}
+            </p>
+          </div>
 
-        {loading ? (
-          <div className="text-center py-16 text-muted-foreground">{t.common.loading}</div>
-        ) : events.length === 0 ? (
-          <div className="text-center py-16">
-            <Camera className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">{t.index.noEvents}</p>
+          <div className="flex gap-2">
+            <Input
+              value={accessKey}
+              onChange={(e) => setAccessKey(e.target.value.toUpperCase())}
+              onKeyDown={handleKeyDown}
+              placeholder={locale === "ro" ? "Codul de acces" : "Код доступа"}
+              className="text-center text-lg tracking-widest uppercase font-mono"
+              maxLength={20}
+              autoFocus
+            />
+            <Button onClick={handleSearch} disabled={searching} size="lg">
+              {searching ? (
+                <span className="animate-pulse">...</span>
+              ) : (
+                <ArrowRight className="w-5 h-5" />
+              )}
+            </Button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            {events.map((event, i) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.3 }}
-              >
-                <Link
-                  to={`/event/${event.slug}`}
-                  className="block p-6 rounded-lg bg-card shadow-card hover:shadow-elevated transition-all group"
-                >
-                  <h3 className="font-display text-lg font-semibold group-hover:text-primary transition-colors">
-                    {event.title}
-                  </h3>
-                  {event.description && <p className="text-sm text-muted-foreground mt-1">{event.description}</p>}
-                  <div className="flex items-center gap-1 mt-3 text-sm text-primary font-medium">
-                    {t.index.viewPhotos} <ArrowRight className="w-4 h-4" />
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        )}
+        </motion.div>
       </main>
     </div>
   );
