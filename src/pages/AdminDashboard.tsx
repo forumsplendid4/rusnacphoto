@@ -44,7 +44,7 @@ import {
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
-import { applyWatermark, compressOriginal } from "@/lib/watermark";
+import { applyWatermark } from "@/lib/watermark";
 import EventPhotosManagerDialog from "@/components/admin/EventPhotosManagerDialog";
 import PrintSizesManagerDialog from "@/components/admin/PrintSizesManagerDialog";
 
