@@ -209,27 +209,19 @@ export default function AdminDashboard() {
         const file = fileArray[currentIndex];
 
         try {
-          // Create watermarked preview and compressed original in parallel
-          const [watermarkedBlob, originalBlob] = await Promise.all([
-            applyWatermark(file),
-            compressOriginal(file),
-          ]);
+          const watermarkedBlob = await applyWatermark(file);
           if (cancelRef.current) break;
 
           const baseName = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
           const previewPath = `${eventId}/${baseName}.jpeg`;
-          const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.')) : '.jpeg';
-          const originalPath = `${eventId}/${baseName}-original${ext}`;
 
-          // Upload both in parallel
-          const [previewResult, originalResult] = await Promise.all([
-            supabase.storage.from("event-photos").upload(previewPath, watermarkedBlob, { contentType: "image/jpeg" }),
-            supabase.storage.from("event-originals").upload(originalPath, originalBlob, { contentType: file.type || "image/jpeg" }),
-          ]);
+          const { error: uploadError } = await supabase.storage
+            .from("event-photos")
+            .upload(previewPath, watermarkedBlob, { contentType: "image/jpeg" });
 
           if (cancelRef.current) break;
 
-          if (previewResult.error) {
+          if (uploadError) {
             failedCount++;
           } else {
             const { error: dbError } = await callRpc("admin_add_photo", {
@@ -237,7 +229,6 @@ export default function AdminDashboard() {
               p_event_id: eventId,
               p_storage_path: previewPath,
               p_filename: file.name,
-              p_original_storage_path: originalResult.error ? null : originalPath,
             });
             if (dbError) failedCount++;
             else successCount++;

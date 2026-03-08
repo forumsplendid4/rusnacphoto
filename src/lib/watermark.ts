@@ -64,9 +64,3 @@ export async function applyWatermark(file: File): Promise<Blob> {
   });
 }
 
-/**
- * Returns the original file as-is for maximum print quality.
- */
-export async function compressOriginal(file: File): Promise<Blob> {
-  return file;
-}
